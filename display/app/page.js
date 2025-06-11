@@ -1,8 +1,7 @@
 // nextjs-frontend/src/app/page.js
 'use client';
 import Header from './components/Header';
-import Hero from '.components/Hero';
-
+import Hero from './components/Hero';
 export default function Home() {
   
   return(
