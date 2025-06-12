@@ -1,9 +1,5 @@
-@import 'https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&family=Share+Tech+Mono&display=swap';
-@import 'https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap';
-@import 'https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&display=swap';
-@import 'https://fonts.googleapis.com/css2?family=Righteous&display=swap';
-@import 'https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&display=swap';
-@import 'https://fonts.googleapis.com/css2?family=Bungee&display=swap';
+@import url('https://fonts.googleapis.com/css2?family=Bungee&family=Orbitron:wght@400;600&family=Oswald:wght@200..700&family=Righteous&family=Share+Tech+Mono&family=Syncopate:wght@400;700&display=swap');
+
 
 @import "tailwindcss";
 @import "tw-animate-css";
