@@ -89,7 +89,7 @@ function Hero() {
     formData.append('job_description', jobDescription);
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/analyze-job', {
+      const response = await fetch('https://gemini-resume-analyzer.onrender.com/', {
         method: 'POST',
         body: formData,
       });
