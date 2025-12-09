@@ -1,0 +1,173 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== Root tokens & fonts (variables filled by layout font loader) ===== */
+:root{
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  --font-display: "Playfair Display", Georgia, "Times New Roman", serif;
+  --accent-1: #FFD37A;
+  --accent-2: #FF9A5A;
+  --ink: #0b0b0c;
+}
+
+/* Convenience background utility used by layout */
+.bg-background {
+  background: radial-gradient(circle at 20% 30%, #141416, #0b0b0c 60%) fixed;
+}
+
+/* ------------------------------ */
+/*  Base page styles              */
+/* ------------------------------ */
+html, body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+  min-height: 100vh;
+  color: white;
+  overscroll-behavior: none;
+  position: relative;
+  background-color: var(--ink);
+}
+
+/* Keep Tailwind utilities available; custom styles come after */
+body {
+  /* fallback (layout uses .bg-background so this is a safety fallback) */
+  background: radial-gradient(circle at 20% 30%, #151517, #0b0b0c 55%, #000 80%) fixed;
+}
+
+/* subtle film grain (very low opacity) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' seed='5'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  will-change: opacity;
+}
+
+/* soft vignette */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.55) 100%);
+}
+
+/* ------------------------------ */
+/* Orbital ambient blobs (GPU-friendly) */
+/* ------------------------------ */
+.orbital, .orbital-2 {
+  position: fixed;
+  width: 620px;
+  height: 620px;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(90px);
+  opacity: 0.18;
+  mix-blend-mode: screen;
+  z-index: 0;
+  will-change: transform, opacity;
+  transform: translateZ(0); /* hint for GPU compositing */
+}
+
+/* warm gold glow top-left */
+.orbital {
+  background: radial-gradient(circle, rgba(255,211,122,0.16), transparent 70%);
+  top: -10%;
+  left: -15%;
+  animation: drift1 22s ease-in-out infinite alternate;
+}
+
+/* warm orange glow bottom-right */
+.orbital-2 {
+  background: radial-gradient(circle, rgba(255,154,90,0.12), transparent 70%);
+  bottom: -10%;
+  right: -10%;
+  animation: drift2 28s ease-in-out infinite alternate;
+}
+
+@keyframes drift1 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(12%, 16%) scale(1.25); }
+}
+@keyframes drift2 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-10%, -14%) scale(1.2); }
+}
+
+/* noise texture helper (can be applied selectively) */
+.noise-texture {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  will-change: opacity;
+}
+
+/* ------------------------------ */
+/* Typography helpers & tokens    */
+/* ------------------------------ */
+.font-display { font-family: var(--font-display); }
+
+/* shadows, blur helpers */
+.shadow-soft { box-shadow: 0 12px 40px rgba(0,0,0,0.25); }
+.shadow-deeper { box-shadow: 0 18px 60px rgba(0,0,0,0.45); }
+.drop-shadow-soft { filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4)); }
+.backdrop-blur-xs { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+
+/* subtle utility for accent ring focus */
+.focus-accent:focus { box-shadow: 0 0 0 4px rgba(255,211,122,0.08); }
+
+/* small responsive adjustments */
+@media (min-width: 768px) {
+  .orbital { width: 700px; height: 700px; }
+  .orbital-2 { width: 650px; height: 650px; }
+}
+
+/* fade-in util */
+@keyframes fade-in { from { opacity:0; transform: translateY(10px);} to { opacity:1; transform: translateY(0);} }
+.animate-fade-in { animation: fade-in 1s ease forwards; }
+
+/* ------------------------------ */
+/* Accessibility: respects user reduced motion preference */
+/* ------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  .orbital, .orbital-2 { animation: none; transition: none; opacity: 0.12; }
+  .animate-fade-in { animation: none; opacity: 1; transform: none; }
+}
+
+/* small polish: ensure inputs inherit color in dark mode */
+input, textarea, select {
+  color: inherit;
+  background: transparent;
+}
+
+/* ensure big display headings feel right */
+h1, h2, h3, h4 { line-height: 1.03; }
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(18px);
+}
+
+.chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.chip-green {
+  background: rgba(0, 255, 153, 0.1);
+  color: #00ff99;
+}
+
+.chip-red {
+  background: rgba(255, 0, 92, 0.15);
+  color: #ff5370;
+}
