@@ -1,6 +1,8 @@
-fastapi
-uvicorn
-pypdf
-python-multipart
-google-generativeai
 Flask
+flask-cors
+python-dotenv
+pdfplumber
+google-generativeai
+python-multipart
+pypdf
+werkzeug
