@@ -6,10 +6,27 @@
 :root{
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   --font-display: "Playfair Display", Georgia, "Times New Roman", serif;
-  --accent-1: #FFD37A;
-  --accent-2: #FF9A5A;
-  --ink: #0b0b0c;
+  
+  --bg: #0b0d10;
+  --panel: rgba(255,255,255,0.035);
+  --border: rgba(255,255,255,0.08);
 }
+
+body {
+  background: radial-gradient(circle at 20% 10%, #11131a, #0b0d10 60%);
+}
+
+.editorial-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(22px);
+  border-radius: 28px;
+}
+
+.section-spacing {
+  margin-top: 6rem;
+}
+
 
 /* Convenience background utility used by layout */
 .bg-background {
