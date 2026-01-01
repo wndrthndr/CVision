@@ -1,4 +1,3 @@
-// File: app/resonance/page.jsx
 'use client';
 
 import React from 'react';
