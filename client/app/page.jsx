@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import ResumeUploader from '../components/ResumeUploader';
-import ResultsNarrative from '../components/ResultsNarrative';
+import ResultsNarrative from '../components/ResultsPanel';
 
 export default function ResonancePage() {
   const [analysis, setAnalysis] = useState(null);
