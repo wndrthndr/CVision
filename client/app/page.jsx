@@ -12,8 +12,7 @@ export default function ResonancePage() {
       {/* HERO */}
       <section className="text-center">
         <h1 className="font-display text-5xl md:text-6xl leading-tight">
-          Resume intelligence,<br />
-          <span className="text-accent1">designed like a report</span>
+         AI  Resume intelligence,<br />
         </h1>
 
         <p className="text-gray-400 mt-6 max-w-xl mx-auto">
