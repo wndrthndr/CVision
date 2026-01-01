@@ -1,74 +1,78 @@
+// File: app/resonance/page.jsx
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import gsap from 'gsap';
+import React from 'react';
+import { motion } from 'framer-motion';
 import ResumeUploader from '../components/ResumeUploader';
-import ResultsNarrative from '../components/ResultsPanel';
+import ResultsPanel from '../components/ResultsPanel';
 
-export default function ResonancePage() {
-  const [analysis, setAnalysis] = useState(null);
-  const pageRef = useRef(null);
+export default function UploadPage() {
+  const [resumeFile, setResumeFile] = React.useState(null);
+  const [analysis, setAnalysis] = React.useState(null);
+  const [percent, setPercent] = React.useState(null);
+  const [loadingAnalysis, setLoadingAnalysis] = React.useState(false);
 
-  /* Page intro choreography */
-  useEffect(() => {
-    gsap.fromTo(
-      pageRef.current.children,
-      { opacity: 0, y: 30 },
-      {
-        opacity: 1,
-        y: 0,
-        stagger: 0.15,
-        duration: 1,
-        ease: 'power3.out',
-      }
-    );
-  }, []);
+  // Called by ResumeUploader when upload+analysis completes
+  function handleAnalysisResult(result) {
+    setAnalysis(result);
+    setPercent(null);
+    setLoadingAnalysis(false);
+  }
+
+  // Variants used for subtle entrance / layout transitions
+  const containerTransition = { type: 'spring', stiffness: 140, damping: 20 };
 
   return (
-    <main
-      ref={pageRef}
-      className="relative min-h-screen flex flex-col items-center text-white"
-    >
-      {/* ============================= */}
-      {/* HERO + UPLOAD (Single Section) */}
-      {/* ============================= */}
-      <section className="w-full min-h-screen flex flex-col items-center justify-center px-6">
-        <div className="max-w-3xl w-full text-center">
-          <h1 className="font-display text-5xl md:text-6xl leading-tight">
-            AI Resume intelligence
-          </h1>
+    <div className="min-h-screen bg-gradient-to-b from-[#0c0e12] to-[#0b0d10] text-white p-6">
+      <div className="max-w-6xl mx-auto">
+        <header className="mb-8 text-center">
+          <motion.h1
+            initial={{ y: 18, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.6 }}
+            className="font-display text-[44px] md:text-[56px] font-bold"
+          >
+            AI Resume <span className="text-accent1">Intelligence</span>
+          </motion.h1>
 
-          <p className="text-gray-400 mt-6 max-w-xl mx-auto">
-            Upload once. We analyze structure, skills, language, and intent —
-            and return a focused, readable breakdown.
-          </p>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.12 }}
+            className="text-gray-400 mt-3 max-w-2xl mx-auto"
+          >
+            Upload — get results — results slide in. The upload panel stays visually prominent until analysis completes.
+          </motion.p>
+        </header>
 
-          {/* Upload sits inside hero — intentional */}
-          <div className="mt-16">
-            <ResumeUploader onResult={setAnalysis} />
+        {/* Grid: before analysis, uploader is centered by spanning the columns.
+            After analysis, uploader moves to left col and results occupy right 2 cols. */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <motion.div
+            layout
+            transition={containerTransition}
+            className={!analysis ? 'lg:col-span-3 flex justify-center' : 'lg:col-span-1'}
+          >
+            <div style={{ width: !analysis ? '60%' : '100%' }} className="w-full">
+              <ResumeUploader
+                setResumeFile={setResumeFile}
+                resumeFile={resumeFile}
+                setPercent={setPercent}
+                percent={percent}
+                setLoadingAnalysis={setLoadingAnalysis}
+                loadingAnalysis={loadingAnalysis}
+                onResult={handleAnalysisResult}
+              />
+            </div>
+          </motion.div>
+
+          <div className="lg:col-span-2">
+            <motion.div layout transition={containerTransition}>
+              <ResultsPanel analysis={analysis} />
+            </motion.div>
           </div>
         </div>
-      </section>
-
-      {/* ============================= */}
-      {/* SOFT DIVIDER */}
-      {/* ============================= */}
-      {analysis && (
-        <div className="w-full flex justify-center">
-          <div className="w-[1px] h-24 bg-gradient-to-b from-transparent via-white/20 to-transparent" />
-        </div>
-      )}
-
-      {/* ============================= */}
-      {/* RESULTS STORY */}
-      {/* ============================= */}
-      {analysis && (
-        <section className="w-full px-6 pb-40">
-          <div className="max-w-4xl mx-auto">
-            <ResultsNarrative analysis={analysis} />
-          </div>
-        </section>
-      )}
-    </main>
+      </div>
+    </div>
   );
 }
