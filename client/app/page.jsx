@@ -41,7 +41,6 @@ export default function UploadPage() {
             transition={{ delay: 0.12 }}
             className="text-gray-400 mt-3 max-w-2xl mx-auto"
           >
-            Upload — get results — results slide in. The upload panel stays visually prominent until analysis completes.
           </motion.p>
         </header>
 
