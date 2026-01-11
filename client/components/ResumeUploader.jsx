@@ -221,7 +221,6 @@ export default function ResumeUploader({
         </div>
       </motion.div>
 
-      <div className="text-xs text-gray-400 mt-3">Note: This uploader remains visually prominent until results are ready — then Results slide in on the right.</div>
     </motion.div>
   );
 }
