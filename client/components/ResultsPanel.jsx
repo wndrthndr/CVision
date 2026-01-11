@@ -8,17 +8,7 @@ export default function ResultsPanel({ analysis }) {
 
   if (!analysis) {
     if (!analysis) {
-      return (
-        <div className="w-full flex justify-center items-center py-20">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="glass-panel p-6 rounded-3xl border border-white/8 shadow-2xl text-center max-w-xl w-full"
-          >
-            <p className="text-gray-400">Results will appear here after analysis.</p>
-          </motion.div>
-        </div>
-      );
+      return null;
     }
     
   }
