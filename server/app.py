@@ -425,10 +425,10 @@ def analyze_job_resume():
 
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        file.save(filepath)
+        pdf_bytes = file.read()
 
         # 1) Extract text
-        raw_text = read_pdf_text(filepath)
+        raw_text = read_pdf_text(pdf_bytes)
         cleaned_text = clean_extracted_text(raw_text)
 
         # 2) Quick local parse to support scoring and to provide fallback data
