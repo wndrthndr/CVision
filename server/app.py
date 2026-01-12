@@ -447,7 +447,7 @@ def analyze_job_resume():
         # 4) Call Gemini with primary model, fallback if needed
         gemini_raw = None
         last_model_used = None
-        models_to_try = [PRIMARY_MODEL] + FALLBACK_MODELS
+        models_to_try = [PRIMARY_MODEL]
         for m in models_to_try:
             try:
                 gemini_raw = call_gemini_with_retries(prompt_text, m, max_retries=2)
