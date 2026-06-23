@@ -34,7 +34,7 @@ if not GEMINI_KEY:
 
 genai.configure(api_key=GEMINI_KEY)
 
-PRIMARY_MODEL = "models/gemini-2.5-flash"
+PRIMARY_MODEL = "models/gemini-2.0-flash"
 FALLBACK_MODELS = [
     "models/gemini-2.0-flash",
     "models/gemini-flash-latest",
@@ -478,7 +478,7 @@ def extract_json_from_text(raw: str) -> Dict[str, Any]:
 
 def call_gemini_with_retries(
     prompt_text: str,
-    max_retries_per_model: int = 1
+    max_retries_per_model: int = 0
 ) -> Tuple[Dict[str, Any], str]:
     """
     Uses primary model, then fallback models.
