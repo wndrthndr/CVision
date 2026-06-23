@@ -1,533 +1,788 @@
-# app.py  — Industry-grade ATS Engine v2 (Flask + Gemini)
+# app.py
+# Faster ATS Resume Analyzer
+# Keeps the SAME frontend endpoint and SAME response structure
+# Flask + pdfplumber + Gemini
+
 import os
 import io
-import json
 import re
+import json
 import time
+import hashlib
 import traceback
 from typing import List, Dict, Any, Tuple
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
+from werkzeug.exceptions import RequestEntityTooLarge
 
 import pdfplumber
 import google.generativeai as genai
 
-# Load env
+
+# =========================================================
+# CONFIGURATION
+# =========================================================
+
 load_dotenv()
+
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
+
 if not GEMINI_KEY:
     raise RuntimeError("GEMINI_API_KEY not found in environment (.env)")
 
-# Configure Gemini
 genai.configure(api_key=GEMINI_KEY)
 
-# Models to try (primary first, then fallbacks)
 PRIMARY_MODEL = "models/gemini-2.5-flash"
-FALLBACK_MODELS = ["models/gemini-flash-latest", "models/gemini-2.0-flash"]
+FALLBACK_MODELS = [
+    "models/gemini-2.0-flash",
+    "models/gemini-flash-latest",
+]
 
-# Flask app
+UPLOAD_FOLDER = "uploads"
+ALLOWED_EXTENSIONS = {"pdf"}
+
+MAX_FILE_SIZE_MB = 5
+MAX_PDF_PAGES = 4
+
+# Prevent huge prompts from slowing Gemini down
+MAX_RESUME_CHARS_FOR_AI = 11000
+MAX_JD_CHARS_FOR_AI = 5500
+
+# Simple temporary cache
+CACHE_TTL_SECONDS = 30 * 60
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+# =========================================================
+# FLASK APP
+# =========================================================
+
 app = Flask(__name__)
 CORS(app)
 
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB
-
-ALLOWED_EXTENSIONS = {"pdf"}
+app.config["MAX_CONTENT_LENGTH"] = MAX_FILE_SIZE_MB * 1024 * 1024
 
 
-# ------------------------
-# Utilities: File & text
-# ------------------------
+# =========================================================
+# GEMINI MODEL OBJECTS
+# Create once instead of recreating for every request
+# =========================================================
+
+gemini_models = {}
+
+for model_name in [PRIMARY_MODEL] + FALLBACK_MODELS:
+    try:
+        gemini_models[model_name] = genai.GenerativeModel(model_name)
+    except Exception as e:
+        app.logger.warning(f"Could not initialize {model_name}: {e}")
+
+
+# =========================================================
+# SIMPLE IN-MEMORY CACHE
+# Resets when server restarts. Good enough for now.
+# =========================================================
+
+analysis_cache: Dict[str, Dict[str, Any]] = {}
+
+
+def create_cache_key(resume_text: str, job_description: str) -> str:
+    raw = resume_text + "|||" + job_description
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def get_cached_result(cache_key: str):
+    item = analysis_cache.get(cache_key)
+
+    if not item:
+        return None
+
+    if time.time() - item["created_at"] > CACHE_TTL_SECONDS:
+        del analysis_cache[cache_key]
+        return None
+
+    return item["data"]
+
+
+def save_cached_result(cache_key: str, data: Dict[str, Any]):
+    analysis_cache[cache_key] = {
+        "created_at": time.time(),
+        "data": data
+    }
+
+
+# =========================================================
+# FILE / PDF HELPERS
+# =========================================================
+
 def allowed_file(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    return (
+        "." in filename
+        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    )
 
 
-def read_pdf_text(path_or_bytes) -> str:
+def read_pdf_text(pdf_bytes: bytes) -> str:
     """
-    Extract raw text from PDF using pdfplumber.
-    Accepts a filepath or bytes-like object.
+    Reads only first MAX_PDF_PAGES pages.
+    This avoids slow processing on huge PDFs.
     """
     text_parts = []
-    if isinstance(path_or_bytes, (bytes, bytearray)):
-        fp = io.BytesIO(path_or_bytes)
-        pdf = pdfplumber.open(fp)
-    else:
-        pdf = pdfplumber.open(path_or_bytes)
 
-    try:
-        for page in pdf.pages:
+    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        pages = pdf.pages[:MAX_PDF_PAGES]
+
+        for page in pages:
             try:
                 page_text = page.extract_text() or ""
             except Exception:
                 page_text = ""
-            text_parts.append(page_text)
-    finally:
-        pdf.close()
 
-    raw = "\n".join(text_parts)
-    return raw
+            text_parts.append(page_text)
+
+    return "\n".join(text_parts)
 
 
 def normalize_spaced_letters(text: str) -> str:
     """
-    Convert 'N U K A L A' -> 'NUKALA' but keep normal spacing.
-    Heuristic: if a token is single letters separated by spaces on same line -> join them.
+    Example:
+    N U K A L A V I S H A L
+    becomes:
+    NUKALA VISHAL
     """
-    def _join_letters_line(line: str) -> str:
-        # If line mostly single letters separated by spaces -> join
-        # e.g. "N U K A L A  V I S H A L" -> "NUKALA VISHAL"
+
+    def join_letters_line(line: str) -> str:
         parts = line.split()
+
         if not parts:
             return line
-        # count single-letter tokens and tokens with punctuation
-        single_letters = sum(1 for p in parts if len(re.sub(r'\W','',p)) == 1)
+
+        single_letters = sum(
+            1 for part in parts
+            if len(re.sub(r"\W", "", part)) == 1
+        )
+
         if single_letters >= max(2, len(parts) * 0.5):
-            # group consecutive single letters into words separated by double spaces or punctuation
             joined = []
             buffer = []
-            for p in parts:
-                if len(re.sub(r'\W','',p)) == 1:
-                    buffer.append(re.sub(r'\W','',p))
+
+            for part in parts:
+                clean_part = re.sub(r"\W", "", part)
+
+                if len(clean_part) == 1:
+                    buffer.append(clean_part)
                 else:
                     if buffer:
                         joined.append("".join(buffer))
                         buffer = []
-                    joined.append(p)
+
+                    joined.append(part)
+
             if buffer:
                 joined.append("".join(buffer))
+
             return " ".join(joined)
+
         return line
 
-    lines = text.splitlines()
-    out_lines = [_join_letters_line(ln) for ln in lines]
-    return "\n".join(out_lines)
+    return "\n".join(join_letters_line(line) for line in text.splitlines())
 
 
 def fix_hyphenation(text: str) -> str:
-    """
-    Join words split across lines with hyphens or soft hyphenation.
-    Example: 'multi-\ntenant' -> 'multi-tenant' or ideally 'multitenant' but we'll join gracefully.
-    """
-    # Replace '-\n' (hyphen at EOL) with empty string (join words)
     text = re.sub(r"-\s*\n\s*", "", text)
-    # Replace soft hyphen chars and multiple spaces/newlines
     text = text.replace("\u00AD", "")
-    # Remove accidental line-joins like 'devel-\nopment' -> 'development' handled above
     return text
 
 
 def collapse_whitespace(text: str) -> str:
-    # Collapse many blank lines and normalize spaces
     text = re.sub(r"\r\n", "\n", text)
     text = re.sub(r"[ \t]{2,}", " ", text)
-    text = re.sub(r"\n{2,}", "\n\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
 
 def clean_extracted_text(raw: str) -> str:
-    t = raw
-    t = normalize_spaced_letters(t)
-    t = fix_hyphenation(t)
-    t = collapse_whitespace(t)
-    # Trim long heading lines that are noise sometimes (optional)
-    return t
+    text = normalize_spaced_letters(raw)
+    text = fix_hyphenation(text)
+    text = collapse_whitespace(text)
+
+    return text
 
 
-# ------------------------
-# Utilities: Parsing & scoring
-# ------------------------
-# Minimal skill lexicon — expand as required
+# =========================================================
+# LOCAL PARSING / ATS SCORING
+# =========================================================
+
 COMMON_SKILLS = {
-    "python", "java", "javascript", "react", "node", "sql", "postgres", "mysql",
-    "mongodb", "aws", "docker", "kubernetes", "git", "html", "css", "tensorflow",
-    "pytorch", "machine learning", "data science", "nlp", "flask", "django"
+    "python", "java", "javascript", "typescript",
+    "react", "reactjs", "react.js",
+    "node", "nodejs", "node.js",
+    "express", "spring", "spring boot",
+    "sql", "mysql", "postgres", "postgresql",
+    "mongodb", "firebase",
+    "aws", "azure", "gcp",
+    "docker", "kubernetes",
+    "git", "github",
+    "html", "css", "tailwind",
+    "flask", "django",
+    "machine learning", "deep learning",
+    "data science", "nlp",
+    "tensorflow", "pytorch",
+    "rest api", "jwt", "redis", "kafka"
 }
 
+
+def normalize_skill(skill: str) -> str:
+    aliases = {
+        "reactjs": "react",
+        "react.js": "react",
+        "nodejs": "node",
+        "node.js": "node",
+        "postgresql": "postgres",
+    }
+
+    return aliases.get(skill.lower().strip(), skill.lower().strip())
+
+
 def extract_contact_info(text: str) -> Dict[str, str]:
-    email_re = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
-    phone_re = re.compile(r"(\+?\d[\d\-\s\(\)]{7,}\d)")
+    email_re = re.compile(
+        r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"
+    )
+
+    phone_re = re.compile(
+        r"(\+?\d[\d\-\s\(\)]{7,}\d)"
+    )
+
     email = email_re.search(text)
     phone = phone_re.search(text)
-    # name heuristic: first non-empty line that has alphabetic characters and not email/phone
+
     name = ""
-    for ln in text.splitlines()[:6]:
-        ln_clean = ln.strip()
-        if ln_clean and "@" not in ln_clean and not re.search(r"\d", ln_clean) and len(ln_clean.split()) <= 5:
-            name = ln_clean
+
+    for line in text.splitlines()[:6]:
+        line = line.strip()
+
+        if (
+            line
+            and "@" not in line
+            and not re.search(r"\d", line)
+            and len(line.split()) <= 5
+        ):
+            name = line
             break
-    return {"name": name, "email": email.group(0) if email else "", "phone": phone.group(0) if phone else ""}
+
+    return {
+        "name": name,
+        "email": email.group(0) if email else "",
+        "phone": phone.group(0) if phone else ""
+    }
 
 
 def extract_skills_from_text(text: str) -> List[str]:
+    lower_text = text.lower()
     found = set()
-    lower = text.lower()
-    # multi-word checks
-    for kw in ["machine learning", "data science", "deep learning", "react js", "node js"]:
-        if kw in lower:
-            found.add(kw)
-    # token-level checks
-    tokens = re.findall(r"[A-Za-z\+\#\-\_]{2,}", lower)
-    for t in tokens:
-        if t in COMMON_SKILLS:
-            found.add(t)
-    # fuzzy: check if a token appears as substring of a skill (e.g., 'k8s' not handled)
+
+    # Multi-word skills
+    for skill in COMMON_SKILLS:
+        if " " in skill and skill in lower_text:
+            found.add(normalize_skill(skill))
+
+    # Single-word skills
+    tokens = set(re.findall(r"[A-Za-z\+\#\.\-_]{2,}", lower_text))
+
+    for token in tokens:
+        normalized = normalize_skill(token)
+
+        if normalized in COMMON_SKILLS:
+            found.add(normalized)
+
     return sorted(found)
 
 
 def estimate_experience_years(text: str) -> float:
-    # Look for year ranges like 2020-2023 or full dates
-    years = re.findall(r"(19|20)\d{2}", text)
-    years = [int(y) for y in years]
+    years = re.findall(r"\b(?:19|20)\d{2}\b", text)
+    years = [int(year) for year in years]
+
     if len(years) >= 2:
-        # naive: range difference between min and max
-        return float(max(years) - min(years))
-    # fallback: look for "X years" mentions
-    m = re.search(r"(\d+)\s+years?", text.lower())
-    if m:
-        return float(m.group(1))
+        difference = max(years) - min(years)
+
+        if 0 <= difference <= 20:
+            return float(difference)
+
+    match = re.search(r"(\d+(?:\.\d+)?)\s*\+?\s*years?", text.lower())
+
+    if match:
+        return float(match.group(1))
+
     return 0.0
 
 
 def count_achievements(text: str) -> int:
-    # Count numeric achievements like '30%', 'increased by 20', 'reduced X by 30%'
-    count = 0
-    count += len(re.findall(r"\b\d+%|\b\d+\s?percent\b", text.lower()))
-    count += len(re.findall(r"\b(improved|reduced|increased|decreased|boosted|saved)\b", text.lower()))
-    return count
+    lower_text = text.lower()
+
+    percentage_count = len(re.findall(r"\b\d+%", lower_text))
+
+    action_count = len(re.findall(
+        r"\b(improved|reduced|increased|decreased|boosted|saved|optimized|achieved)\b",
+        lower_text
+    ))
+
+    return percentage_count + action_count
 
 
 def formatting_risk_score(text: str) -> int:
-    """
-    Higher score = better formatting (less risk).
-    Heuristic penalties for:
-     - Single-letter spaced words
-     - Very short lines with many spaces (columns)
-     - Presence of many non-word characters
-    """
     score = 100
-    # penalize single-letter spaced patterns
-    if re.search(r'(\b[A-Z]\s){3,}', text):
+
+    if re.search(r"(\b[A-Z]\s){3,}", text):
         score -= 30
-    # penalty if lots of short lines (multi-column)
-    lines = [ln for ln in text.splitlines() if ln.strip()]
-    short_lines = sum(1 for ln in lines if len(ln) < 40)
+
+    lines = [line for line in text.splitlines() if line.strip()]
+    short_lines = sum(1 for line in lines if len(line) < 40)
+
     if len(lines) > 10 and short_lines / max(1, len(lines)) > 0.45:
         score -= 25
-    # penalty for long weird char runs
+
     if re.search(r"[^\w\s]{6,}", text):
         score -= 20
+
     return max(0, min(100, score))
 
 
 def grammar_readability_score(text: str) -> int:
-    # crude heuristic: average sentence length and punctuation frequency
-    sentences = re.split(r'[.!?]\s+', text)
-    sentences = [s for s in sentences if s.strip()]
+    sentences = re.split(r"[.!?]\s+", text)
+    sentences = [sentence for sentence in sentences if sentence.strip()]
+
     if not sentences:
         return 50
-    avg_words = sum(len(s.split()) for s in sentences) / len(sentences)
-    # ideal avg between 10 and 22
-    if avg_words < 8 or avg_words > 30:
-        base = 60
+
+    average_words = (
+        sum(len(sentence.split()) for sentence in sentences)
+        / len(sentences)
+    )
+
+    if average_words < 8 or average_words > 30:
+        score = 60
     else:
-        base = 85
-    # small penalty for many fragments
-    fragments = sum(1 for s in sentences if len(s.split()) < 3)
-    base -= min(20, fragments)
-    return max(0, min(100, int(base)))
+        score = 85
+
+    fragments = sum(
+        1 for sentence in sentences
+        if len(sentence.split()) < 3
+    )
+
+    score -= min(20, fragments)
+
+    return max(0, min(100, int(score)))
 
 
-def keyword_alignment_score(resume_skills: List[str], jd_text: str) -> Tuple[int, List[str], List[str]]:
-    """
-    Compute simple keyword match: which JD keywords appear in resume_skills.
-    JD keywords extracted by naive tokenization and lookup into COMMON_SKILLS plus tokens >2 chars.
-    """
-    jd_lower = jd_text.lower()
-    jd_tokens = set(re.findall(r"[a-z\+\#\-\_]{2,}", jd_lower))
-    # preferred jd keywords: intersection with known skills
-    jd_skills = set([t for t in jd_tokens if t in COMMON_SKILLS])
-    # fallback: take top tokens from JD (this is naive)
+def keyword_alignment_score(
+    resume_skills: List[str],
+    jd_text: str
+) -> Tuple[int, List[str], List[str]]:
+
+    jd_skills = set(extract_skills_from_text(jd_text))
+    resume_set = set(normalize_skill(skill) for skill in resume_skills)
+
     if not jd_skills:
-        # try to pick tokens that look like skill tokens (letters and plus/hashtag)
-        jd_skills = set(list(jd_tokens)[:10])
-    resume_set = set([s.lower() for s in resume_skills])
-    matched = sorted([s for s in resume_set if s in jd_skills])
-    missing = sorted([s for s in jd_skills if s not in resume_set])
-    # score: percent matched (if jd_skills empty -> neutral 50)
-    if not jd_skills:
-        score = 50
-    else:
-        score = int((len(matched) / len(jd_skills)) * 100)
+        return 50, [], []
+
+    matched = sorted(resume_set.intersection(jd_skills))
+    missing = sorted(jd_skills.difference(resume_set))
+
+    score = int((len(matched) / len(jd_skills)) * 100)
+
     return score, matched, missing
 
 
-def aggregate_scores(subscores: Dict[str, int], weights=None) -> int:
-    if weights is None:
-        weights = {
-            "keyword": 0.45,
-            "experience": 0.2,
-            "achievements": 0.15,
-            "formatting": 0.1,
-            "grammar": 0.1
-        }
-    final = 0.0
-    for k, v in subscores.items():
-        w = weights.get(k, 0)
-        final += v * w
+def aggregate_scores(subscores: Dict[str, int]) -> int:
+    weights = {
+        "keyword": 0.45,
+        "experience": 0.20,
+        "achievements": 0.15,
+        "formatting": 0.10,
+        "grammar": 0.10
+    }
+
+    final = 0
+
+    for key, value in subscores.items():
+        final += value * weights.get(key, 0)
+
     return max(0, min(100, int(round(final))))
 
 
-# ------------------------
-# Utilities: Gemini prompt + safe JSON parse
-# ------------------------
-PROMPT_SCHEMA = """
-You are an expert ATS resume analyzer that must return EXACTLY one valid JSON object (no explanation).
-Given a Job Description and a Resume, return a JSON object that contains the following keys:
-- overall_match_score: integer 0-100
-- keyword_alignment: { matched: [strings], missing: [strings] }
-- experience_relevance_score: integer 0-100
-- skill_strengths: list of 3-5 short strings (bullets)
-- skill_gaps: list of 3-5 short strings
-- achievement_rewrites: list of up to 5 suggested rewritten bullet points (concise)
-- formatting_issues: list of formatting problems (strings)
-- grammar_issues: list of grammar/style issues (strings)
-- final_recommendation: short 1-2 sentence recommendation
+# =========================================================
+# GEMINI
+# =========================================================
 
-Return ONLY the JSON. No extra commentary.
+PROMPT_SCHEMA = """
+You are an expert ATS resume analyzer.
+
+Return EXACTLY one valid JSON object.
+Return no markdown.
+Return no explanation outside the JSON.
+
+Use this exact structure:
+
+{
+  "overall_match_score": 0,
+  "keyword_alignment": {
+    "matched": [],
+    "missing": []
+  },
+  "experience_relevance_score": 0,
+  "skill_strengths": [],
+  "skill_gaps": [],
+  "achievement_rewrites": [],
+  "formatting_issues": [],
+  "grammar_issues": [],
+  "final_recommendation": ""
+}
+
+Rules:
+- Keep every list short: maximum 3 items.
+- Keep every item concise.
+- achievement_rewrites: maximum 3 rewritten bullet points.
+- Do not write long explanations.
+- Return valid JSON only.
 """
 
-def call_gemini_with_retries(prompt_text: str, model_name: str, max_retries=2, timeout_seconds=30) -> str:
-    """
-    Call the given model. Return raw text (string).
-    Try simple retry loop. Raise Exception on persistent failure.
-    """
-    last_exc = None
-    for attempt in range(max_retries + 1):
-        try:
-            model = genai.GenerativeModel(model_name)
-            # prefer generate_content when passing prompt string directly
-            response = model.generate_content(prompt_text)
-            # response.text is the typical field
-            raw = getattr(response, "text", None)
-            if raw is None:
-                # try other attributes
-                raw = str(response)
-            return raw
-        except Exception as e:
-            last_exc = e
-            # small backoff
-            time.sleep(0.6 * (attempt + 1))
-    raise last_exc
 
+def extract_json_from_text(raw: str) -> Dict[str, Any]:
+    text = raw.strip()
 
-def extract_json_from_text(raw: str) -> Tuple[dict, str]:
-    """
-    Find a JSON object inside raw text. Try best-effort fixes:
-      - extract first {...}
-      - replace single quotes -> double quotes
-      - remove leading/trailing backticks or triple code fences
-      - fix trailing commas
-    Returns (parsed_dict, used_raw_string). Raises ValueError if cannot parse.
-    """
-    s = raw.strip()
+    # Remove markdown code fences if Gemini adds them
+    text = re.sub(r"^```json\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"^```\s*", "", text)
+    text = re.sub(r"\s*```$", "", text)
 
-    # Remove code fences
-    s = re.sub(r"^```(?:json)?\s*", "", s, flags=re.I)
-    s = re.sub(r"\s*```$", "", s, flags=re.I)
+    start = text.find("{")
+    end = text.rfind("}")
 
-    # Find first JSON object by finding first { and its matching }
-    start = s.find("{")
-    if start == -1:
-        raise ValueError("No JSON object found in model output.")
-    # Try to find the matching end by counting braces
-    brace = 0
-    end = -1
-    for i in range(start, len(s)):
-        if s[i] == "{":
-            brace += 1
-        elif s[i] == "}":
-            brace -= 1
-            if brace == 0:
-                end = i
-                break
-    if end == -1:
-        # fallback: take from start to last }
-        last = s.rfind("}")
-        if last != -1:
-            candidate = s[start:last+1]
-        else:
-            candidate = s[start:]
-    else:
-        candidate = s[start:end+1]
+    if start == -1 or end == -1:
+        raise ValueError("No JSON object found in Gemini response")
 
-    # Quick tries to parse; if fails, attempt a few repairs
-    tried = candidate
-    # attempt 1: direct
+    candidate = text[start:end + 1]
+
     try:
-        parsed = json.loads(tried)
-        return parsed, tried
-    except Exception:
-        pass
+        return json.loads(candidate)
+    except json.JSONDecodeError:
+        # Repair trailing commas
+        candidate = re.sub(r",\s*}", "}", candidate)
+        candidate = re.sub(r",\s*]", "]", candidate)
 
-    # attempt 2: replace single quotes with double quotes (but be careful)
-    tried2 = re.sub(r"(?<!\\)'", '"', tried)
-    try:
-        parsed = json.loads(tried2)
-        return parsed, tried2
-    except Exception:
-        pass
+        return json.loads(candidate)
 
-    # attempt 3: remove trailing commas before } or ]
-    tried3 = re.sub(r",\s*([}\]])", r"\1", tried2)
-    try:
-        parsed = json.loads(tried3)
-        return parsed, tried3
-    except Exception:
-        pass
 
-    # attempt 4: remove non-JSON leading characters again and try to find inner {} blocks
-    inner_matches = re.findall(r"\{(?:[^{}]|\{[^{}]*\})*\}", tried3)
-    for block in inner_matches:
-        try:
-            parsed = json.loads(block)
-            return parsed, block
-        except Exception:
+def call_gemini_with_retries(
+    prompt_text: str,
+    max_retries_per_model: int = 1
+) -> Tuple[Dict[str, Any], str]:
+    """
+    Uses primary model, then fallback models.
+    One retry only, so users do not wait too long.
+    """
+
+    last_error = None
+
+    for model_name in [PRIMARY_MODEL] + FALLBACK_MODELS:
+        model = gemini_models.get(model_name)
+
+        if not model:
             continue
 
-    # give up and raise with the last candidate for debugging
-    raise ValueError("Failed to parse JSON from model output. Candidate excerpt: " + tried3[:1000])
+        for attempt in range(max_retries_per_model + 1):
+            try:
+                response = model.generate_content(prompt_text)
+
+                raw_text = getattr(response, "text", None)
+
+                if not raw_text:
+                    raise ValueError("Gemini returned an empty response")
+
+                parsed_json = extract_json_from_text(raw_text)
+
+                return parsed_json, model_name
+
+            except Exception as error:
+                last_error = error
+                app.logger.warning(
+                    f"Gemini failed: {model_name}, attempt {attempt + 1}: {error}"
+                )
+
+                if attempt < max_retries_per_model:
+                    time.sleep(0.5)
+
+    raise RuntimeError(f"All Gemini models failed: {last_error}")
 
 
-# ------------------------
-# Main endpoint
-# ------------------------
+def build_fast_prompt(
+    cleaned_text: str,
+    job_description: str,
+    local_matched: List[str],
+    local_missing: List[str],
+    local_score: int
+) -> str:
+    """
+    Keeps the same Gemini response structure,
+    but sends less data and requests shorter output.
+    """
+
+    resume_for_ai = cleaned_text[:MAX_RESUME_CHARS_FOR_AI]
+    jd_for_ai = job_description[:MAX_JD_CHARS_FOR_AI]
+
+    return f"""
+{PROMPT_SCHEMA}
+
+JOB DESCRIPTION:
+{jd_for_ai}
+
+RESUME:
+{resume_for_ai}
+
+LOCAL ANALYSIS CONTEXT:
+Local score: {local_score}
+Locally matched skills: {", ".join(local_matched[:12]) if local_matched else "None"}
+Locally missing skills: {", ".join(local_missing[:12]) if local_missing else "None"}
+
+Use the local context where useful, but analyze the resume yourself.
+
+Return only JSON.
+"""
+
+
+def patch_gemini_response(
+    gemini_json: Dict[str, Any],
+    computed_overall: int,
+    keyword_matched: List[str],
+    keyword_missing: List[str],
+    experience_score: int,
+    resume_skills: List[str]
+) -> Dict[str, Any]:
+    """
+    Ensures exact keys always exist,
+    so your frontend never breaks.
+    """
+
+    patched = dict(gemini_json)
+
+    patched.setdefault("overall_match_score", computed_overall)
+    patched.setdefault("keyword_alignment", {
+        "matched": keyword_matched,
+        "missing": keyword_missing
+    })
+    patched.setdefault("experience_relevance_score", experience_score)
+    patched.setdefault("skill_strengths", [])
+    patched.setdefault("skill_gaps", [])
+    patched.setdefault("achievement_rewrites", [])
+    patched.setdefault("formatting_issues", [])
+    patched.setdefault("grammar_issues", [])
+    patched.setdefault("final_recommendation", "")
+
+    # If AI gives empty / invalid keyword alignment, use local result
+    if not isinstance(patched.get("keyword_alignment"), dict):
+        patched["keyword_alignment"] = {
+            "matched": keyword_matched,
+            "missing": keyword_missing
+        }
+
+    if not patched["keyword_alignment"].get("matched"):
+        patched["keyword_alignment"]["matched"] = keyword_matched
+
+    if not patched["keyword_alignment"].get("missing"):
+        patched["keyword_alignment"]["missing"] = keyword_missing
+
+    # Ensure score is valid
+    if not isinstance(patched.get("overall_match_score"), int):
+        patched["overall_match_score"] = computed_overall
+
+    if not isinstance(patched.get("experience_relevance_score"), int):
+        patched["experience_relevance_score"] = experience_score
+
+    # Local fallbacks
+    if not patched["skill_strengths"]:
+        patched["skill_strengths"] = resume_skills[:3]
+
+    if not patched["skill_gaps"]:
+        patched["skill_gaps"] = keyword_missing[:3]
+
+    if not patched["final_recommendation"]:
+        patched["final_recommendation"] = (
+            "Add more role-specific keywords and quantify your achievements with measurable results."
+        )
+
+    # Limit long model output for faster frontend rendering
+    patched["skill_strengths"] = patched["skill_strengths"][:3]
+    patched["skill_gaps"] = patched["skill_gaps"][:3]
+    patched["achievement_rewrites"] = patched["achievement_rewrites"][:3]
+    patched["formatting_issues"] = patched["formatting_issues"][:3]
+    patched["grammar_issues"] = patched["grammar_issues"][:3]
+
+    return patched
+
+
+# =========================================================
+# ERROR HANDLERS
+# =========================================================
+
+@app.errorhandler(RequestEntityTooLarge)
+def file_too_large(error):
+    return jsonify({
+        "error": f"File too large. Maximum allowed size is {MAX_FILE_SIZE_MB} MB."
+    }), 413
+
+
+# =========================================================
+# MAIN ENDPOINT
+# SAME ENDPOINT AND SAME FRONTEND FORMAT AS ORIGINAL
+# =========================================================
+
 @app.route("/analyze-job", methods=["POST"])
 def analyze_job_resume():
-    filepath = None
+    start_time = time.time()
+
     try:
+        # -------------------------------------------------
+        # 1. Receive frontend form fields
+        # -------------------------------------------------
         job_description = request.form.get("job_description", "").strip()
+
         if not job_description:
-            return jsonify({"error": "job_description is required"}), 400
+            return jsonify({
+                "error": "job_description is required"
+            }), 400
 
         if "resume_file" not in request.files:
-            return jsonify({"error": "resume_file missing"}), 400
+            return jsonify({
+                "error": "resume_file missing"
+            }), 400
 
         file = request.files["resume_file"]
-        if file.filename == "":
-            return jsonify({"error": "No file selected"}), 400
-        if not allowed_file(file.filename):
-            return jsonify({"error": "Only PDF files allowed"}), 400
 
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        if file.filename == "":
+            return jsonify({
+                "error": "No file selected"
+            }), 400
+
+        if not allowed_file(file.filename):
+            return jsonify({
+                "error": "Only PDF files allowed"
+            }), 400
+
         pdf_bytes = file.read()
 
-        # 1) Extract text
+        if not pdf_bytes:
+            return jsonify({
+                "error": "Uploaded PDF is empty"
+            }), 400
+
+        # -------------------------------------------------
+        # 2. Extract PDF text
+        # -------------------------------------------------
+        extraction_start = time.time()
+
         raw_text = read_pdf_text(pdf_bytes)
         cleaned_text = clean_extracted_text(raw_text)
 
-        # 2) Quick local parse to support scoring and to provide fallback data
+        extraction_seconds = round(time.time() - extraction_start, 2)
+
+        if len(cleaned_text.split()) < 20:
+            return jsonify({
+                "error": "Could not extract readable text from this PDF. Please upload a text-based PDF resume."
+            }), 400
+
+        # -------------------------------------------------
+        # 3. Check cache
+        # -------------------------------------------------
+        cache_key = create_cache_key(cleaned_text, job_description)
+        cached_response = get_cached_result(cache_key)
+
+        if cached_response:
+            # Same original response shape + optional speed details
+            cached_response["performance"] = {
+                "cache_hit": True,
+                "total_seconds": round(time.time() - start_time, 2)
+            }
+
+            return jsonify(cached_response), 200
+
+        # -------------------------------------------------
+        # 4. Local analysis
+        # -------------------------------------------------
+        local_start = time.time()
+
         contact = extract_contact_info(cleaned_text)
         resume_skills = extract_skills_from_text(cleaned_text)
+
         exp_years = estimate_experience_years(cleaned_text)
         achievements_count = count_achievements(cleaned_text)
+
         formatting_score_local = formatting_risk_score(cleaned_text)
         grammar_score_local = grammar_readability_score(cleaned_text)
 
-        # 3) Build prompt for Gemini — include schema string
-        system_prompt = PROMPT_SCHEMA
-        # Keep the prompt concise and attach the JD + resume
-        prompt_text = f"{system_prompt}\n\n---Job Description---\n{job_description}\n\n---Resume Text---\n{cleaned_text}\n\nReturn only JSON."
+        keyword_score_val, matched, missing = keyword_alignment_score(
+            resume_skills,
+            job_description
+        )
 
-        # 4) Call Gemini with primary model, fallback if needed
-        gemini_raw = None
-        last_model_used = None
-        models_to_try = [PRIMARY_MODEL]
-        for m in models_to_try:
-            try:
-                gemini_raw = call_gemini_with_retries(prompt_text, m, max_retries=2)
-                last_model_used = m
-                break
-            except Exception as e:
-                # log and try next
-                app.logger.warning(f"Model {m} failed: {e}")
-                gemini_raw = None
-                last_model_used = None
-                continue
+        # Do not punish freshers too hard
+        experience_score_val = (
+            int(min(100, exp_years * 18))
+            if exp_years > 0
+            else 55
+        )
 
-        if gemini_raw is None:
-            return jsonify({"error": "AI model request failed (all fallbacks)."}), 500
-
-        # 5) Robustly extract JSON from gemini_raw
-        try:
-            gemini_json, used_string = extract_json_from_text(gemini_raw)
-            # ensure required keys exist; if missing, fill with local heuristics
-        except Exception as e:
-            # return raw output for debugging
-            return jsonify({
-                "error": "AI returned unparseable JSON",
-                "raw_output": gemini_raw[:5000],
-                "exception": str(e)
-            }), 500
-
-        # 6) If model omitted some fields, patch using local heuristics
-        patched = dict(gemini_json)  # shallow copy
-        # Ensure expected keys exist
-        patched.setdefault("overall_match_score", None)
-        patched.setdefault("keyword_alignment", {"matched": [], "missing": []})
-        patched.setdefault("experience_relevance_score", None)
-        patched.setdefault("skill_strengths", [])
-        patched.setdefault("skill_gaps", [])
-        patched.setdefault("achievement_rewrites", [])
-        patched.setdefault("formatting_issues", [])
-        patched.setdefault("grammar_issues", [])
-        patched.setdefault("final_recommendation", "")
-
-        # If overall_match_score missing, compute heuristic aggregate
-        # Compute subscores
-        keyword_score_val, matched, missing = keyword_alignment_score(resume_skills, job_description)
-        experience_score_val = int(min(100, exp_years * 10)) if exp_years else 50
-        achievements_score_val = min(100, achievements_count * 25)  # each achievement counts
-        formatting_score_val = formatting_score_local
-        grammar_score_val = grammar_score_local
+        achievements_score_val = min(100, achievements_count * 20)
 
         subs = {
             "keyword": keyword_score_val,
             "experience": experience_score_val,
             "achievements": achievements_score_val,
-            "formatting": formatting_score_val,
-            "grammar": grammar_score_val
+            "formatting": formatting_score_local,
+            "grammar": grammar_score_local
         }
+
         computed_overall = aggregate_scores(subs)
 
-        if not patched.get("overall_match_score"):
-            patched["overall_match_score"] = computed_overall
+        local_seconds = round(time.time() - local_start, 2)
 
-        # Fill keyword_alignment if empty
-        if not patched.get("keyword_alignment") or not patched["keyword_alignment"].get("matched"):
-            patched["keyword_alignment"] = {"matched": matched, "missing": missing}
+        # -------------------------------------------------
+        # 5. Gemini call
+        # -------------------------------------------------
+        prompt_text = build_fast_prompt(
+            cleaned_text=cleaned_text,
+            job_description=job_description,
+            local_matched=matched,
+            local_missing=missing,
+            local_score=computed_overall
+        )
 
-        if not patched.get("experience_relevance_score"):
-            patched["experience_relevance_score"] = experience_score_val
+        gemini_start = time.time()
 
-        # patch skill_strengths / gaps from local detection if empty
-        if not patched["skill_strengths"]:
-            patched["skill_strengths"] = resume_skills[:5]
-        if not patched["skill_gaps"]:
-            patched["skill_gaps"] = missing[:5]
+        gemini_json, last_model_used = call_gemini_with_retries(
+            prompt_text,
+            max_retries_per_model=1
+        )
 
-        # Add a short final recommendation if not provided
-        if not patched.get("final_recommendation"):
-            patched["final_recommendation"] = (
-                "Consider adding more role-specific keywords and quantifying achievements with metrics."
-            )
+        gemini_seconds = round(time.time() - gemini_start, 2)
 
-        # 7) Build response for frontend (include some local diagnostics)
+        # -------------------------------------------------
+        # 6. Patch response to protect frontend
+        # -------------------------------------------------
+        patched = patch_gemini_response(
+            gemini_json=gemini_json,
+            computed_overall=computed_overall,
+            keyword_matched=matched,
+            keyword_missing=missing,
+            experience_score=experience_score_val,
+            resume_skills=resume_skills
+        )
+
+        # -------------------------------------------------
+        # 7. SAME RESPONSE FORMAT AS YOUR ORIGINAL BACKEND
+        # -------------------------------------------------
         response_payload = {
             "resume_extracted_text": cleaned_text,
             "resume_word_count": len(cleaned_text.split()),
@@ -541,23 +796,51 @@ def analyze_job_resume():
             },
             "gemini_analysis": patched,
             "subscores_computed_locally": subs,
+
+            # Extra field: frontend can ignore this safely
+            "performance": {
+                "cache_hit": False,
+                "pdf_extraction_seconds": extraction_seconds,
+                "local_processing_seconds": local_seconds,
+                "gemini_seconds": gemini_seconds,
+                "total_seconds": round(time.time() - start_time, 2)
+            }
         }
+
+        save_cached_result(cache_key, response_payload)
 
         return jsonify(response_payload), 200
 
     except Exception as e:
         traceback.print_exc()
-        return jsonify({"error": "Internal server error", "detail": str(e)}), 500
 
-    finally:
-        # cleanup uploaded file
-        try:
-            if filepath and os.path.exists(filepath):
-                os.remove(filepath)
-        except Exception:
-            pass
+        return jsonify({
+            "error": "Internal server error",
+            "detail": str(e)
+        }), 500
 
+
+# =========================================================
+# OPTIONAL HEALTH CHECK
+# =========================================================
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({
+        "status": "running",
+        "models_available": list(gemini_models.keys())
+    }), 200
+
+
+# =========================================================
+# START SERVER
+# =========================================================
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=True
+    )
