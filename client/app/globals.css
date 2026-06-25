@@ -2,189 +2,145 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== Root tokens & fonts (variables filled by layout font loader) ===== */
-:root{
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  --font-display: "Playfair Display", Georgia, "Times New Roman", serif;
-  
-  --bg: #0b0d10;
-  --panel: rgba(255,255,255,0.035);
-  --border: rgba(255,255,255,0.08);
+:root {
+  --ink: #171613;
+  --paper: #f2eee6;
+  --muted: #aaa398;
+  --line: rgba(242, 238, 230, 0.14);
+  --surface: rgba(35, 33, 29, 0.82);
+  --surface-soft: rgba(255, 255, 255, 0.045);
+  --accent: #d9ff5a;
+  --accent-dark: #b6d84b;
+  --danger: #ff8e7f;
+  --good: #a7e79b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--ink);
 }
 
 body {
-  background: radial-gradient(circle at 20% 10%, #11131a, #0b0d10 60%);
-}
-
-.editorial-card {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  backdrop-filter: blur(22px);
-  border-radius: 28px;
-}
-
-.section-spacing {
-  margin-top: 6rem;
-}
-
-
-/* Convenience background utility used by layout */
-.bg-background {
-  background: radial-gradient(circle at 20% 30%, #141416, #0b0b0c 60%) fixed;
-}
-
-/* ------------------------------ */
-/*  Base page styles              */
-/* ------------------------------ */
-html, body {
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  scroll-behavior: smooth;
+  margin: 0;
   min-height: 100vh;
-  color: white;
-  overscroll-behavior: none;
-  position: relative;
-  background-color: var(--ink);
+  overflow-x: hidden;
+  color: var(--paper);
+  background:
+    radial-gradient(circle at 10% 10%, rgba(217, 255, 90, 0.07), transparent 28rem),
+    radial-gradient(circle at 90% 90%, rgba(255, 174, 105, 0.06), transparent 32rem),
+    #171613;
+  font-family: var(--font-sans), Arial, sans-serif;
 }
 
-/* Keep Tailwind utilities available; custom styles come after */
-body {
-  /* fallback (layout uses .bg-background so this is a safety fallback) */
-  background: radial-gradient(circle at 20% 30%, #151517, #0b0b0c 55%, #000 80%) fixed;
+button,
+input,
+textarea {
+  font: inherit;
 }
 
-/* subtle film grain (very low opacity) */
-body::before {
-  content: "";
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+::selection {
+  color: #171613;
+  background: var(--accent);
+}
+
+.editorial-title {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+.grain {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
-  opacity: 0.05;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' seed='5'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  will-change: opacity;
+  opacity: 0.06;
+  z-index: 50;
+  background-image:
+    repeating-radial-gradient(circle at 0 0, transparent 0, rgba(255, 255, 255, 0.5) 1px, transparent 1px, transparent 3px);
+  background-size: 5px 5px;
+  mix-blend-mode: soft-light;
 }
 
-/* soft vignette */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.55) 100%);
-}
-
-/* ------------------------------ */
-/* Orbital ambient blobs (GPU-friendly) */
-/* ------------------------------ */
-.orbital, .orbital-2 {
-  position: fixed;
-  width: 620px;
-  height: 620px;
-  border-radius: 50%;
-  pointer-events: none;
-  filter: blur(90px);
-  opacity: 0.18;
-  mix-blend-mode: screen;
-  z-index: 0;
-  will-change: transform, opacity;
-  transform: translateZ(0); /* hint for GPU compositing */
-}
-
-/* warm gold glow top-left */
-.orbital {
-  background: radial-gradient(circle, rgba(255,211,122,0.16), transparent 70%);
-  top: -10%;
-  left: -15%;
-  animation: drift1 22s ease-in-out infinite alternate;
-}
-
-/* warm orange glow bottom-right */
-.orbital-2 {
-  background: radial-gradient(circle, rgba(255,154,90,0.12), transparent 70%);
-  bottom: -10%;
-  right: -10%;
-  animation: drift2 28s ease-in-out infinite alternate;
-}
-
-@keyframes drift1 {
-  0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(12%, 16%) scale(1.25); }
-}
-@keyframes drift2 {
-  0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(-10%, -14%) scale(1.2); }
-}
-
-/* noise texture helper (can be applied selectively) */
-.noise-texture {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: 0.05;
-  mix-blend-mode: overlay;
-  will-change: opacity;
-}
-
-/* ------------------------------ */
-/* Typography helpers & tokens    */
-/* ------------------------------ */
-.font-display { font-family: var(--font-display); }
-
-/* shadows, blur helpers */
-.shadow-soft { box-shadow: 0 12px 40px rgba(0,0,0,0.25); }
-.shadow-deeper { box-shadow: 0 18px 60px rgba(0,0,0,0.45); }
-.drop-shadow-soft { filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4)); }
-.backdrop-blur-xs { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-
-/* subtle utility for accent ring focus */
-.focus-accent:focus { box-shadow: 0 0 0 4px rgba(255,211,122,0.08); }
-
-/* small responsive adjustments */
-@media (min-width: 768px) {
-  .orbital { width: 700px; height: 700px; }
-  .orbital-2 { width: 650px; height: 650px; }
-}
-
-/* fade-in util */
-@keyframes fade-in { from { opacity:0; transform: translateY(10px);} to { opacity:1; transform: translateY(0);} }
-.animate-fade-in { animation: fade-in 1s ease forwards; }
-
-/* ------------------------------ */
-/* Accessibility: respects user reduced motion preference */
-/* ------------------------------ */
-@media (prefers-reduced-motion: reduce) {
-  .orbital, .orbital-2 { animation: none; transition: none; opacity: 0.12; }
-  .animate-fade-in { animation: none; opacity: 1; transform: none; }
-}
-
-/* small polish: ensure inputs inherit color in dark mode */
-input, textarea, select {
-  color: inherit;
-  background: transparent;
-}
-
-/* ensure big display headings feel right */
-h1, h2, h3, h4 { line-height: 1.03; }
-.glass-panel {
-  background: rgba(255, 255, 255, 0.03);
+.dossier-card {
+  border: 1px solid var(--line);
+  background: linear-gradient(145deg, rgba(48, 45, 39, 0.88), rgba(27, 25, 22, 0.82));
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(18px);
 }
 
-.chip {
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 500;
+.dossier-input {
+  width: 100%;
+  border: 1px solid rgba(242, 238, 230, 0.15);
+  border-radius: 14px;
+  outline: none;
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.055);
+  transition: 180ms ease;
 }
 
-.chip-green {
-  background: rgba(0, 255, 153, 0.1);
-  color: #00ff99;
+.dossier-input:focus {
+  border-color: rgba(217, 255, 90, 0.72);
+  box-shadow: 0 0 0 3px rgba(217, 255, 90, 0.08);
 }
 
-.chip-red {
-  background: rgba(255, 0, 92, 0.15);
-  color: #ff5370;
+.dossier-input::placeholder {
+  color: #807b72;
+}
+
+.accent-button {
+  color: #171613;
+  background: var(--accent);
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+.accent-button:hover:not(:disabled) {
+  background: #e4ff88;
+  transform: translateY(-1px);
+}
+
+.accent-button:disabled {
+  opacity: 0.5;
+}
+
+.outline-button {
+  border: 1px solid var(--line);
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.04);
+  transition: background 180ms ease;
+}
+
+.outline-button:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.orbit-line {
+  border: 1px dashed rgba(242, 238, 230, 0.16);
+}
+
+.orbit-node {
+  border: 1px solid rgba(242, 238, 230, 0.16);
+  background: rgba(33, 31, 27, 0.94);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
+  transition: border-color 180ms ease, transform 180ms ease, background 180ms ease;
+}
+
+.orbit-node:hover {
+  border-color: rgba(217, 255, 90, 0.7);
+  background: rgba(53, 49, 41, 0.98);
+  transform: translateY(-4px);
+}
+
+@media (max-width: 767px) {
+  .grain {
+    opacity: 0.035;
+  }
 }
