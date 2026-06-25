@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import ResumeFlow from '../../components/ResumeFlow';
-import OrbitResults from '../../components/OrbitResults';
+import ResumeFlow from '../components/ResumeFlow';
+import OrbitResults from '../components/OrbitResults';
 
 export default function ResonancePage() {
   const [analysis, setAnalysis] = useState(null);
