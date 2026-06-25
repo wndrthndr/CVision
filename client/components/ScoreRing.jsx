@@ -1,40 +1,58 @@
 'use client';
+
 import React from 'react';
 import { motion } from 'framer-motion';
 
-export default function ScoreRing({ value }) {
-  const radius = 50;
+export default function ScoreRing({ value = 0, size = 176 }) {
+  const safeValue = Math.max(0, Math.min(100, Number(value) || 0));
+  const radius = 72;
+  const stroke = 8;
   const circumference = 2 * Math.PI * radius;
-  const progress = (value / 100) * circumference;
+  const progress = (safeValue / 100) * circumference;
+  const center = 88;
 
   return (
-    <div className="flex flex-col items-center">
-      <svg width="120" height="120">
-        <circle cx="60" cy="60" r={radius} stroke="#2a2d33" strokeWidth="10" fill="none" />
-        <motion.circle
-          cx="60"
-          cy="60"
+    <div className="relative flex items-center justify-center">
+      <svg width={size} height={size} viewBox="0 0 176 176">
+        <circle
+          cx={center}
+          cy={center}
           r={radius}
-          stroke="url(#grad)"
-          strokeWidth="10"
           fill="none"
+          stroke="rgba(242,238,230,0.10)"
+          strokeWidth={stroke}
+        />
+
+        <motion.circle
+          cx={center}
+          cy={center}
+          r={radius}
+          fill="none"
+          stroke="#d9ff5a"
+          strokeWidth={stroke}
+          strokeLinecap="round"
           strokeDasharray={circumference}
-          strokeDashoffset={circumference - progress}
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: circumference - progress }}
-          transition={{ duration: 1.0, ease: 'easeOut' }}
-          strokeLinecap="round"
+          transition={{ duration: 1.1, ease: 'easeOut' }}
+          transform={`rotate(-90 ${center} ${center})`}
         />
-        <defs>
-          <linearGradient id="grad" x1="0%" x2="100%">
-            <stop offset="0%" stopColor="#61f3ff" />
-            <stop offset="100%" stopColor="#ff6ec7" />
-          </linearGradient>
-        </defs>
+
+        <circle
+          cx={center}
+          cy={center}
+          r="58"
+          fill="rgba(23,22,19,0.75)"
+          stroke="rgba(242,238,230,0.08)"
+        />
       </svg>
 
-      <p className="text-2xl font-bold mt-2">{value}%</p>
-      <p className="text-gray-400 text-xs">Overall Match</p>
+      <div className="absolute text-center">
+        <p className="editorial-title text-5xl leading-none">{safeValue}</p>
+        <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-[#aaa398]">
+          Match index
+        </p>
+      </div>
     </div>
   );
 }
