@@ -18,6 +18,11 @@ export default function ResonancePage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden px-5 py-10 sm:px-8 md:px-12 lg:px-16">
+      {/* --- Google Font injection right inside your page JSX --- */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @import url('https://fonts.googleapis.com/css2?family=Familjen+Grotesk:ital,wght@0,400..700;1,400..700&display=swap');
+      `}} />
+
       <div className="grain" />
 
       <div className="relative z-10 mx-auto max-w-6xl">
@@ -46,7 +51,8 @@ export default function ResonancePage() {
                   Resume review, reimagined
                 </p>
 
-                <h1 className="editorial-title mt-4 text-5xl leading-[0.9] sm:text-7xl">
+                {/* --- CHANGED: Applied arbitrary font, weights, and tracking here --- */}
+                <h1 className="font-['Familjen_Grotesk'] mt-4 text-5xl font-bold tracking-tight leading-[0.9] sm:text-7xl text-white">
                   Make your resume
                   <br />
                   harder to ignore.
