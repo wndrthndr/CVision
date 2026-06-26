@@ -105,19 +105,17 @@ export default function OrbitResults({ analysis, onRestart }) {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 + index * 0.08 }}
-      className="orbit-node flex h-full w-full flex-col rounded-2xl p-5 text-left transition-transform hover:scale-[1.02]"
+      className="orbit-node flex h-full w-full flex-col rounded-2xl border border-white/[0.04] p-5 text-left transition-all duration-300 hover:border-white/10 hover:bg-white/[0.02]"
     >
       <p className="text-[9px] uppercase tracking-[0.18em] text-[#d9ff5a]">
         {card.eyebrow}
       </p>
       <div className="mt-3 flex w-full items-start justify-between gap-2">
-        {/* Title: Familjen Grotesk */}
         <h3 className="font-['Familjen_Grotesk'] text-2xl font-bold tracking-tight text-white">{card.title}</h3>
         <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-[#aaa398]">
           {card.count}
         </span>
       </div>
-      {/* Summary: Andika */}
       <p className="font-['Andika'] mt-2 flex-1 text-xs leading-relaxed text-[#aaa398]">
         {card.summary}
       </p>
@@ -126,7 +124,6 @@ export default function OrbitResults({ analysis, onRestart }) {
 
   return (
     <section className="relative">
-      {/* --- Updated Font Import: Includes Andika & Familjen Grotesk --- */}
       <style dangerouslySetInnerHTML={{__html: `
         @import url('https://fonts.googleapis.com/css2?family=Andika:ital,wght@0,400;0,700;1,400;1,700&family=Familjen+Grotesk:ital,wght@0,400..700;1,400..700&display=swap');
       `}} />
@@ -144,43 +141,51 @@ export default function OrbitResults({ analysis, onRestart }) {
               <p className="text-[10px] uppercase tracking-[0.24em] text-[#d9ff5a]">
                 Resume report / complete
               </p>
-              {/* Heading: Familjen Grotesk */}
               <h2 className="font-['Familjen_Grotesk'] mt-3 text-4xl font-bold tracking-tight sm:text-6xl text-white">
                 Your career, in focus.
               </h2>
-              {/* Description: Andika */}
-              <p className="font-['Andika'] mx-auto mt-4 max-w-xl text-sm leading-relaxed text-[#aaa398]">
-                Explore each signal around your match index. Start with the areas
-                that need the most attention.
+              <p className="font-['Andika'] mx-auto mt-4 max-w-xl text-sm leading-relaxed text-[#777168]">
+                Select a clear perspective below to unpack your evaluation signals.
               </p>
             </div>
 
-            {/* --- DESKTOP GRID LAYOUT --- */}
-            <div className="mx-auto mt-12 hidden max-w-4xl flex-col items-center gap-6 md:flex">
+            {/* --- PREMIUM BENTO DASHBOARD LAYOUT (DESKTOP) --- */}
+            <div className="mx-auto mt-12 hidden max-w-6xl grid-cols-12 items-stretch gap-6 md:grid">
               
+              {/* Left Column: Deep Executive Briefing Panel (Score + Expanded Text) */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.85 }}
+                initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.15, duration: 0.6 }}
-                className="dossier-card flex w-[320px] flex-col items-center justify-center rounded-[32px] p-8"
+                className="dossier-card col-span-5 flex flex-col items-center justify-center rounded-[32px] p-8 text-center"
               >
-                <ScoreRing value={score} size={172} />
-                <p className="font-['Familjen_Grotesk'] mt-3 text-sm font-bold text-[#d7d1c7]">{getVerdict(score)}</p>
-                <p className="font-['Andika'] mt-2 text-center text-xs leading-relaxed text-[#777168]">
+                <div className="mb-4">
+                  <ScoreRing value={score} size={180} />
+                </div>
+                <p className="font-['Familjen_Grotesk'] mt-3 text-2xl font-bold tracking-tight text-[#d7d1c7]">
+                  {getVerdict(score)}
+                </p>
+                
+                {/* Fixed Squeezed Typography: Changed text size to text-base, opened tracking, and expanded container width */}
+                <p className="font-['Andika'] mt-5 px-3 text-center text-sm lg:text-base leading-relaxed text-[#aaa398]">
                   {g.final_recommendation}
                 </p>
               </motion.div>
 
-              <div className="grid w-full grid-cols-3 gap-5">
-                {cards.slice(0, 3).map((card, index) => renderCard(card, index))}
-              </div>
-
-              <div className="flex w-full justify-center gap-5">
-                {cards.slice(3, 5).map((card, index) => (
-                  <div className="w-[calc(33.333%-0.8rem)]" key={card.id}>
-                    {renderCard(card, index + 3)}
-                  </div>
-                ))}
+              {/* Right Column: Non-Uniform Grid Matrix */}
+              <div className="col-span-7 grid grid-cols-2 gap-4">
+                {cards.map((card, index) => {
+                  // Make the 'rewrites' card stretch across both columns to break the layout asymmetry beautifully
+                  const isFullWidth = card.id === 'rewrites';
+                  return (
+                    <div 
+                      key={card.id} 
+                      className={isFullWidth ? 'col-span-2' : 'col-span-1'}
+                    >
+                      {renderCard(card, index)}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -208,7 +213,7 @@ export default function OrbitResults({ analysis, onRestart }) {
             </div>
           </motion.div>
         ) : (
-          /* --- DETAIL VIEW --- */
+          /* --- DETAIL VIEW (Unchanged Logic) --- */
           <motion.div
             key={`detail-${active.id}`}
             initial={{ opacity: 0, scale: 0.94, y: 18 }}
