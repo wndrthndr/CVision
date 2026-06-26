@@ -19,7 +19,6 @@ function getCards(g) {
       count: (g.skill_strengths || []).length,
       summary: 'Signals already supporting your application.',
       items: g.skill_strengths || [],
-      position: 'top',
     },
     {
       id: 'gaps',
@@ -28,7 +27,6 @@ function getCards(g) {
       count: (g.skill_gaps || []).length,
       summary: 'Requirements that need stronger evidence.',
       items: g.skill_gaps || [],
-      position: 'right',
     },
     {
       id: 'rewrites',
@@ -37,7 +35,6 @@ function getCards(g) {
       count: (g.achievement_rewrites || []).length,
       summary: 'Copy-ready improvements for weak bullets.',
       items: g.achievement_rewrites || [],
-      position: 'bottomRight',
       copyable: true,
     },
     {
@@ -50,7 +47,6 @@ function getCards(g) {
         ...(g.formatting_issues || []).map((item) => `Formatting — ${item}`),
         ...(g.grammar_issues || []).map((item) => `Grammar — ${item}`),
       ],
-      position: 'bottomLeft',
     },
     {
       id: 'keywords',
@@ -61,7 +57,6 @@ function getCards(g) {
       items: (g.keyword_alignment?.missing || []).map(
         (item) => `Show genuine evidence of ${item} in skills, projects, or experience.`
       ),
-      position: 'left',
     },
   ];
 }
@@ -102,12 +97,38 @@ export default function OrbitResults({ analysis, onRestart }) {
 
   const active = cards.find((card) => card.id === activeCard);
 
+  // Helper to render individual cards cleanly
+  const renderCard = (card, index) => (
+    <motion.button
+      type="button"
+      key={card.id}
+      onClick={() => setActiveCard(card.id)}
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.2 + index * 0.08 }}
+      className="orbit-node flex h-full w-full flex-col rounded-2xl p-5 text-left transition-transform hover:scale-[1.02]"
+    >
+      <p className="text-[9px] uppercase tracking-[0.18em] text-[#d9ff5a]">
+        {card.eyebrow}
+      </p>
+      <div className="mt-3 flex w-full items-start justify-between gap-2">
+        <h3 className="editorial-title text-2xl">{card.title}</h3>
+        <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-[#aaa398]">
+          {card.count}
+        </span>
+      </div>
+      <p className="mt-2 flex-1 text-xs leading-relaxed text-[#aaa398]">
+        {card.summary}
+      </p>
+    </motion.button>
+  );
+
   return (
     <section className="relative">
       <AnimatePresence mode="wait">
         {!active ? (
           <motion.div
-            key="orbit"
+            key="orbit-grid"
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96 }}
@@ -117,71 +138,49 @@ export default function OrbitResults({ analysis, onRestart }) {
               <p className="text-[10px] uppercase tracking-[0.24em] text-[#d9ff5a]">
                 Resume report / complete
               </p>
-
               <h2 className="editorial-title mt-3 text-4xl sm:text-6xl">
                 Your career, in focus.
               </h2>
-
               <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-[#aaa398]">
                 Explore each signal around your match index. Start with the areas
                 that need the most attention.
               </p>
             </div>
 
-            <div className="relative mx-auto mt-10 hidden h-[620px] max-w-5xl md:block">
-              <div className="orbit-line absolute left-1/2 top-1/2 h-[430px] w-[430px] -translate-x-1/2 -translate-y-1/2 rounded-full" />
-
+            {/* --- DESKTOP GRID LAYOUT --- */}
+            <div className="mx-auto mt-12 hidden max-w-4xl flex-col items-center gap-6 md:flex">
+              
+              {/* 1. Score Component (Top) */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.85 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.15, duration: 0.6 }}
-                className="dossier-card absolute left-1/2 top-1/2 z-10 flex h-[260px] w-[260px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full"
+                className="dossier-card flex w-[320px] flex-col items-center justify-center rounded-[32px] p-8"
               >
                 <ScoreRing value={score} size={172} />
-                <p className="mt-1 text-sm text-[#d7d1c7]">{getVerdict(score)}</p>
-                <p className="mt-2 max-w-[190px] text-center text-xs leading-relaxed text-[#777168]">
+                <p className="mt-3 text-sm font-medium text-[#d7d1c7]">{getVerdict(score)}</p>
+                <p className="mt-2 text-center text-xs leading-relaxed text-[#777168]">
                   {g.final_recommendation}
                 </p>
               </motion.div>
 
-              {cards.map((card, index) => {
-                const positions = {
-                  top: 'left-1/2 top-0 -translate-x-1/2',
-                  right: 'right-0 top-1/2 -translate-y-1/2',
-                  bottomRight: 'bottom-0 right-[14%]',
-                  bottomLeft: 'bottom-0 left-[14%]',
-                  left: 'left-0 top-1/2 -translate-y-1/2',
-                };
+              {/* 2. Top 3 Metrics */}
+              <div className="grid w-full grid-cols-3 gap-5">
+                {cards.slice(0, 3).map((card, index) => renderCard(card, index))}
+              </div>
 
-                return (
-                  <motion.button
-                    type="button"
-                    key={card.id}
-                    onClick={() => setActiveCard(card.id)}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2 + index * 0.08 }}
-                    className={`orbit-node absolute z-20 w-[190px] rounded-2xl p-4 text-left ${positions[card.position]}`}
-                  >
-                    <p className="text-[9px] uppercase tracking-[0.18em] text-[#d9ff5a]">
-                      {card.eyebrow}
-                    </p>
-                    <div className="mt-2 flex items-start justify-between gap-2">
-                      <h3 className="editorial-title text-2xl">{card.title}</h3>
-                      <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-[#aaa398]">
-                        {card.count}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-xs leading-relaxed text-[#aaa398]">
-                      {card.summary}
-                    </p>
-                  </motion.button>
-                );
-              })}
+              {/* 3. Bottom 2 Metrics (Centered) */}
+              <div className="flex w-full justify-center gap-5">
+                {cards.slice(3, 5).map((card, index) => (
+                  <div className="w-[calc(33.333%-0.8rem)]" key={card.id}>
+                    {renderCard(card, index + 3)}
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {/* Mobile version */}
-            <div className="mt-10 space-y-3 md:hidden">
+            {/* --- MOBILE LAYOUT (Preserved) --- */}
+            <div className="mt-10 space-y-4 md:hidden">
               <div className="dossier-card rounded-[28px] p-6 text-center">
                 <ScoreRing value={score} size={160} />
                 <p className="mt-2 text-sm text-[#d7d1c7]">{getVerdict(score)}</p>
@@ -190,36 +189,21 @@ export default function OrbitResults({ analysis, onRestart }) {
                 </p>
               </div>
 
-              {cards.map((card) => (
-                <button
-                  type="button"
-                  key={card.id}
-                  onClick={() => setActiveCard(card.id)}
-                  className="orbit-node w-full rounded-2xl p-5 text-left"
-                >
-                  <p className="text-[9px] uppercase tracking-[0.18em] text-[#d9ff5a]">
-                    {card.eyebrow}
-                  </p>
-                  <div className="mt-2 flex justify-between">
-                    <h3 className="editorial-title text-2xl">{card.title}</h3>
-                    <span className="text-sm text-[#aaa398]">{card.count}</span>
-                  </div>
-                  <p className="mt-2 text-xs text-[#aaa398]">{card.summary}</p>
-                </button>
-              ))}
+              {cards.map((card, index) => renderCard(card, index))}
             </div>
 
-            <div className="mt-10 text-center">
+            <div className="mt-12 text-center">
               <button
                 type="button"
                 onClick={onRestart}
-                className="outline-button rounded-xl px-5 py-3 text-sm"
+                className="outline-button rounded-xl px-6 py-3 text-sm font-medium"
               >
                 Analyze another resume
               </button>
             </div>
           </motion.div>
         ) : (
+          /* --- DETAIL VIEW (Preserved) --- */
           <motion.div
             key={`detail-${active.id}`}
             initial={{ opacity: 0, scale: 0.94, y: 18 }}
@@ -268,13 +252,11 @@ export default function OrbitResults({ analysis, onRestart }) {
                         <span className="editorial-title text-2xl text-[#d9ff5a]">
                           0{index + 1}
                         </span>
-
                         <div className="flex-1">
                           <p className="text-sm leading-relaxed text-[#e4dfd6]">
                             {item}
                           </p>
                         </div>
-
                         {active.copyable && <CopyButton text={item} />}
                       </div>
                     </motion.div>
