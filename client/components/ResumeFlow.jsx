@@ -376,7 +376,7 @@ formatting concerns, grammar, and practical improvements.`;
                     Target dossier / 02
                   </p>
 
-                  <h2 className="font-['Familjen_Grotesk'] -title mt-3 text-4xl leading-[0.95] sm:text-5xl">
+                  <h2 className="editorial -title mt-3 text-4xl leading-[0.95] sm:text-5xl">
                     Where should
                     <br />
                     this resume go?
