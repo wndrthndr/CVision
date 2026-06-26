@@ -18,9 +18,9 @@ export default function ResonancePage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden px-5 py-10 sm:px-8 md:px-12 lg:px-16">
-      {/* --- Google Font injection right inside your page JSX --- */}
+      {/* --- Updated Font Import: Includes Andika & Familjen Grotesk --- */}
       <style dangerouslySetInnerHTML={{__html: `
-        @import url('https://fonts.googleapis.com/css2?family=Familjen+Grotesk:ital,wght@0,400..700;1,400..700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Andika:ital,wght@0,400;0,700;1,400;1,700&family=Familjen+Grotesk:ital,wght@0,400..700;1,400..700&display=swap');
       `}} />
 
       <div className="grain" />
@@ -51,14 +51,15 @@ export default function ResonancePage() {
                   Resume review, reimagined
                 </p>
 
-                {/* --- CHANGED: Applied arbitrary font, weights, and tracking here --- */}
+                {/* Heading: Familjen Grotesk */}
                 <h1 className="font-['Familjen_Grotesk'] mt-4 text-5xl font-bold tracking-tight leading-[0.9] sm:text-7xl text-white">
                   Make your resume
                   <br />
                   harder to ignore.
                 </h1>
 
-                <p className="mx-auto mt-6 max-w-xl text-sm leading-relaxed text-[#aaa398]">
+                {/* Description: Andika */}
+                <p className="font-['Andika'] mx-auto mt-6 max-w-xl text-sm leading-relaxed text-[#aaa398]">
                   Upload your PDF, choose where you want to go, and receive a
                   structured report designed to make your next move obvious.
                 </p>
