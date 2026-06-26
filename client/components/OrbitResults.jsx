@@ -112,7 +112,8 @@ export default function OrbitResults({ analysis, onRestart }) {
         {card.eyebrow}
       </p>
       <div className="mt-3 flex w-full items-start justify-between gap-2">
-        <h3 className="editorial-title text-2xl">{card.title}</h3>
+        {/* --- CHANGED: Added the arbitrary font family class here --- */}
+        <h3 className="font-['Familjen_Grotesk'] text-2xl font-bold tracking-tight text-white">{card.title}</h3>
         <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-[#aaa398]">
           {card.count}
         </span>
@@ -125,6 +126,11 @@ export default function OrbitResults({ analysis, onRestart }) {
 
   return (
     <section className="relative">
+      {/* --- Google Font injection right inside your JSX --- */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @import url('https://fonts.googleapis.com/css2?family=Familjen+Grotesk:ital,wght@0,400..700;1,400..700&display=swap');
+      `}} />
+
       <AnimatePresence mode="wait">
         {!active ? (
           <motion.div
@@ -138,7 +144,8 @@ export default function OrbitResults({ analysis, onRestart }) {
               <p className="text-[10px] uppercase tracking-[0.24em] text-[#d9ff5a]">
                 Resume report / complete
               </p>
-              <h2 className="editorial-title mt-3 text-4xl sm:text-6xl">
+              {/* --- CHANGED: Applied font here --- */}
+              <h2 className="font-['Familjen_Grotesk'] mt-3 text-4xl font-bold tracking-tight sm:text-6xl text-white">
                 Your career, in focus.
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-[#aaa398]">
@@ -179,7 +186,7 @@ export default function OrbitResults({ analysis, onRestart }) {
               </div>
             </div>
 
-            {/* --- MOBILE LAYOUT (Preserved) --- */}
+            {/* --- MOBILE LAYOUT --- */}
             <div className="mt-10 space-y-4 md:hidden">
               <div className="dossier-card rounded-[28px] p-6 text-center">
                 <ScoreRing value={score} size={160} />
@@ -203,7 +210,7 @@ export default function OrbitResults({ analysis, onRestart }) {
             </div>
           </motion.div>
         ) : (
-          /* --- DETAIL VIEW (Preserved) --- */
+          /* --- DETAIL VIEW --- */
           <motion.div
             key={`detail-${active.id}`}
             initial={{ opacity: 0, scale: 0.94, y: 18 }}
@@ -227,7 +234,8 @@ export default function OrbitResults({ analysis, onRestart }) {
 
               <div className="mt-3 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                 <div>
-                  <h2 className="editorial-title text-5xl">{active.title}</h2>
+                  {/* --- CHANGED: Applied font here --- */}
+                  <h2 className="font-['Familjen_Grotesk'] text-5xl font-bold tracking-tight text-white">{active.title}</h2>
                   <p className="mt-3 max-w-lg text-sm leading-relaxed text-[#aaa398]">
                     {active.summary}
                   </p>
@@ -249,7 +257,8 @@ export default function OrbitResults({ analysis, onRestart }) {
                       className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"
                     >
                       <div className="flex items-start gap-4">
-                        <span className="editorial-title text-2xl text-[#d9ff5a]">
+                        {/* --- CHANGED: Applied font to numbers here too for styling symmetry --- */}
+                        <span className="font-['Familjen_Grotesk'] text-2xl font-bold text-[#d9ff5a]">
                           0{index + 1}
                         </span>
                         <div className="flex-1">
