@@ -97,7 +97,6 @@ export default function OrbitResults({ analysis, onRestart }) {
 
   const active = cards.find((card) => card.id === activeCard);
 
-  // Helper to render individual cards cleanly
   const renderCard = (card, index) => (
     <motion.button
       type="button"
@@ -112,13 +111,14 @@ export default function OrbitResults({ analysis, onRestart }) {
         {card.eyebrow}
       </p>
       <div className="mt-3 flex w-full items-start justify-between gap-2">
-        {/* --- CHANGED: Added the arbitrary font family class here --- */}
+        {/* Title: Familjen Grotesk */}
         <h3 className="font-['Familjen_Grotesk'] text-2xl font-bold tracking-tight text-white">{card.title}</h3>
         <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-[#aaa398]">
           {card.count}
         </span>
       </div>
-      <p className="mt-2 flex-1 text-xs leading-relaxed text-[#aaa398]">
+      {/* Summary: Andika */}
+      <p className="font-['Andika'] mt-2 flex-1 text-xs leading-relaxed text-[#aaa398]">
         {card.summary}
       </p>
     </motion.button>
@@ -126,9 +126,9 @@ export default function OrbitResults({ analysis, onRestart }) {
 
   return (
     <section className="relative">
-      {/* --- Google Font injection right inside your JSX --- */}
+      {/* --- Updated Font Import: Includes Andika & Familjen Grotesk --- */}
       <style dangerouslySetInnerHTML={{__html: `
-        @import url('https://fonts.googleapis.com/css2?family=Familjen+Grotesk:ital,wght@0,400..700;1,400..700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Andika:ital,wght@0,400;0,700;1,400;1,700&family=Familjen+Grotesk:ital,wght@0,400..700;1,400..700&display=swap');
       `}} />
 
       <AnimatePresence mode="wait">
@@ -144,11 +144,12 @@ export default function OrbitResults({ analysis, onRestart }) {
               <p className="text-[10px] uppercase tracking-[0.24em] text-[#d9ff5a]">
                 Resume report / complete
               </p>
-              {/* --- CHANGED: Applied font here --- */}
+              {/* Heading: Familjen Grotesk */}
               <h2 className="font-['Familjen_Grotesk'] mt-3 text-4xl font-bold tracking-tight sm:text-6xl text-white">
                 Your career, in focus.
               </h2>
-              <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-[#aaa398]">
+              {/* Description: Andika */}
+              <p className="font-['Andika'] mx-auto mt-4 max-w-xl text-sm leading-relaxed text-[#aaa398]">
                 Explore each signal around your match index. Start with the areas
                 that need the most attention.
               </p>
@@ -157,7 +158,6 @@ export default function OrbitResults({ analysis, onRestart }) {
             {/* --- DESKTOP GRID LAYOUT --- */}
             <div className="mx-auto mt-12 hidden max-w-4xl flex-col items-center gap-6 md:flex">
               
-              {/* 1. Score Component (Top) */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.85 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -165,18 +165,16 @@ export default function OrbitResults({ analysis, onRestart }) {
                 className="dossier-card flex w-[320px] flex-col items-center justify-center rounded-[32px] p-8"
               >
                 <ScoreRing value={score} size={172} />
-                <p className="mt-3 text-sm font-medium text-[#d7d1c7]">{getVerdict(score)}</p>
-                <p className="mt-2 text-center text-xs leading-relaxed text-[#777168]">
+                <p className="font-['Familjen_Grotesk'] mt-3 text-sm font-bold text-[#d7d1c7]">{getVerdict(score)}</p>
+                <p className="font-['Andika'] mt-2 text-center text-xs leading-relaxed text-[#777168]">
                   {g.final_recommendation}
                 </p>
               </motion.div>
 
-              {/* 2. Top 3 Metrics */}
               <div className="grid w-full grid-cols-3 gap-5">
                 {cards.slice(0, 3).map((card, index) => renderCard(card, index))}
               </div>
 
-              {/* 3. Bottom 2 Metrics (Centered) */}
               <div className="flex w-full justify-center gap-5">
                 {cards.slice(3, 5).map((card, index) => (
                   <div className="w-[calc(33.333%-0.8rem)]" key={card.id}>
@@ -190,8 +188,8 @@ export default function OrbitResults({ analysis, onRestart }) {
             <div className="mt-10 space-y-4 md:hidden">
               <div className="dossier-card rounded-[28px] p-6 text-center">
                 <ScoreRing value={score} size={160} />
-                <p className="mt-2 text-sm text-[#d7d1c7]">{getVerdict(score)}</p>
-                <p className="mt-3 text-xs leading-relaxed text-[#777168]">
+                <p className="font-['Familjen_Grotesk'] mt-2 text-sm font-bold text-[#d7d1c7]">{getVerdict(score)}</p>
+                <p className="font-['Andika'] mt-3 text-xs leading-relaxed text-[#777168]">
                   {g.final_recommendation}
                 </p>
               </div>
@@ -203,7 +201,7 @@ export default function OrbitResults({ analysis, onRestart }) {
               <button
                 type="button"
                 onClick={onRestart}
-                className="outline-button rounded-xl px-6 py-3 text-sm font-medium"
+                className="font-['Familjen_Grotesk'] outline-button rounded-xl px-6 py-3 text-sm font-bold tracking-wide"
               >
                 Analyze another resume
               </button>
@@ -223,7 +221,7 @@ export default function OrbitResults({ analysis, onRestart }) {
               <button
                 type="button"
                 onClick={() => setActiveCard(null)}
-                className="text-xs uppercase tracking-[0.16em] text-[#aaa398] transition hover:text-[#d9ff5a]"
+                className="font-['Familjen_Grotesk'] text-xs font-bold uppercase tracking-[0.16em] text-[#aaa398] transition hover:text-[#d9ff5a]"
               >
                 ← Back to overview
               </button>
@@ -234,14 +232,13 @@ export default function OrbitResults({ analysis, onRestart }) {
 
               <div className="mt-3 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                 <div>
-                  {/* --- CHANGED: Applied font here --- */}
                   <h2 className="font-['Familjen_Grotesk'] text-5xl font-bold tracking-tight text-white">{active.title}</h2>
-                  <p className="mt-3 max-w-lg text-sm leading-relaxed text-[#aaa398]">
+                  <p className="font-['Andika'] mt-3 max-w-lg text-sm leading-relaxed text-[#aaa398]">
                     {active.summary}
                   </p>
                 </div>
 
-                <span className="text-sm text-[#aaa398]">
+                <span className="font-['Andika'] text-sm text-[#aaa398]">
                   {active.count} item{active.count !== 1 ? 's' : ''}
                 </span>
               </div>
@@ -257,12 +254,11 @@ export default function OrbitResults({ analysis, onRestart }) {
                       className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"
                     >
                       <div className="flex items-start gap-4">
-                        {/* --- CHANGED: Applied font to numbers here too for styling symmetry --- */}
                         <span className="font-['Familjen_Grotesk'] text-2xl font-bold text-[#d9ff5a]">
                           0{index + 1}
                         </span>
                         <div className="flex-1">
-                          <p className="text-sm leading-relaxed text-[#e4dfd6]">
+                          <p className="font-['Andika'] text-sm leading-relaxed text-[#e4dfd6]">
                             {item}
                           </p>
                         </div>
@@ -271,7 +267,7 @@ export default function OrbitResults({ analysis, onRestart }) {
                     </motion.div>
                   ))
                 ) : (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-6 text-sm text-[#aaa398]">
+                  <div className="font-['Andika'] rounded-2xl border border-white/10 bg-white/[0.035] p-6 text-sm text-[#aaa398]">
                     No major issues were detected here. Focus on the other report
                     areas for the biggest improvement.
                   </div>
@@ -279,7 +275,7 @@ export default function OrbitResults({ analysis, onRestart }) {
               </div>
 
               {active.id === 'keywords' && (
-                <p className="mt-6 rounded-xl border border-[#d9ff5a]/15 bg-[#d9ff5a]/[0.05] p-4 text-xs leading-relaxed text-[#c9c3b9]">
+                <p className="font-['Andika'] mt-6 rounded-xl border border-[#d9ff5a]/15 bg-[#d9ff5a]/[0.05] p-4 text-xs leading-relaxed text-[#c9c3b9]">
                   Add a keyword only when you can honestly support it through a
                   project, internship, coursework, or certification.
                 </p>
