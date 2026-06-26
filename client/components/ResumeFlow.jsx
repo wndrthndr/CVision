@@ -11,6 +11,9 @@ function StepRail({ stage }) {
 
   return (
     <div className="mx-auto mb-10 flex max-w-md items-center justify-between">
+      <style dangerouslySetInnerHTML={{__html: `
+        @import url('https://fonts.googleapis.com/css2?family=Andika:ital,wght@0,400;0,700;1,400;1,700&family=Familjen+Grotesk:ital,wght@0,400..700;1,400..700&display=swap');
+      `}} />
       {steps.map((step, index) => (
         <React.Fragment key={step}>
           <div className="flex items-center gap-2">
