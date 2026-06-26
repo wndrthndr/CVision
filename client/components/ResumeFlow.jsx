@@ -10,24 +10,24 @@ function StepRail({ stage }) {
     stage === 'upload' ? 0 : stage === 'target' ? 1 : stage === 'results' ? 2 : 2;
 
   return (
-    <div className="mx-auto mb-10 flex max-w-md items-center justify-between">
+    <div className="mx-auto mb-10 flex max-w-md items-center justify-between px-2">
       <style dangerouslySetInnerHTML={{__html: `
         @import url('https://fonts.googleapis.com/css2?family=Andika:ital,wght@0,400;0,700;1,400;1,700&family=Familjen+Grotesk:ital,wght@0,400..700;1,400..700&display=swap');
       `}} />
       {steps.map((step, index) => (
         <React.Fragment key={step}>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <span
-              className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] ${
+              className={`font-['Familjen_Grotesk'] flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold tracking-tight transition-all duration-300 ${
                 index <= activeIndex
-                  ? 'bg-[#d9ff5a] text-[#171613]'
+                  ? 'bg-[#d9ff5a] text-[#171613] shadow-[0_0_12px_rgba(217,255,90,0.2)]'
                   : 'border border-white/15 text-[#aaa398]'
               }`}
             >
               {index < activeIndex ? '✓' : `0${index + 1}`}
             </span>
             <span
-              className={`hidden text-[10px] uppercase tracking-[0.16em] sm:block ${
+              className={`font-['Familjen_Grotesk'] hidden text-[11px] font-bold uppercase tracking-[0.2em] sm:block ${
                 index <= activeIndex ? 'text-[#f2eee6]' : 'text-[#777168]'
               }`}
             >
@@ -36,7 +36,7 @@ function StepRail({ stage }) {
           </div>
 
           {index < steps.length - 1 && (
-            <div className="mx-2 h-px flex-1 bg-white/10" />
+            <div className="mx-3 h-px flex-1 bg-white/[0.08]" />
           )}
         </React.Fragment>
       ))}
@@ -280,22 +280,25 @@ formatting concerns, grammar, and practical improvements.`;
   }
 
   return (
-    <section className="relative min-h-[620px]">
+    <section className="relative min-h-[600px] w-full">
       <StepRail stage={stage} />
 
       <AnimatePresence mode="wait">
         {stage === 'upload' && (
           <motion.div
             key="upload"
-            initial={{ opacity: 0, scale: 0.96, y: 18 }}
+            initial={{ opacity: 0, scale: 0.97, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, x: -180, scale: 0.9 }}
-            transition={{ duration: 0.45, ease: 'easeOut' }}
+            exit={{ opacity: 0, x: -140, scale: 0.96 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
             className="mx-auto max-w-xl"
           >
+            {/* Interactive Drop Zone Panel */}
             <div
-              className={`dossier-card rounded-[30px] p-7 sm:p-10 ${
-                dragging ? 'border-[#d9ff5a]/70' : ''
+              className={`dossier-card relative overflow-hidden rounded-[32px] border p-8 transition-all duration-300 sm:p-10 ${
+                dragging 
+                  ? 'border-[#d9ff5a]/60 bg-[#d9ff5a]/[0.02] shadow-[inset_0_0_24px_rgba(217,255,90,0.03)]' 
+                  : 'border-white/[0.06] bg-white/[0.01]'
               }`}
               onDrop={(event) => {
                 event.preventDefault();
@@ -308,54 +311,56 @@ formatting concerns, grammar, and practical improvements.`;
               }}
               onDragLeave={() => setDragging(false)}
             >
-              <p className="text-[10px] uppercase tracking-[0.22em] text-[#d9ff5a]">
-                Resume dossier / 01
-              </p>
+              <div className="flex flex-col items-center text-center">
+                <p className="font-['Familjen_Grotesk'] text-[10px] font-bold uppercase tracking-[0.24em] text-[#d9ff5a]">
+                  Resume studio / 01
+                </p>
 
-              <h2 className="editorial-title mt-3 text-4xl leading-[0.95] sm:text-5xl">
-                Start with
-                <br />
-                your story.
-              </h2>
+                <h2 className="font-['Familjen_Grotesk'] mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl">
+                  Start with
+                  <br />
+                  your story.
+                </h2>
 
-              <p className="mt-5 max-w-md text-sm leading-relaxed text-[#aaa398]">
-                Drop your resume and we will turn it into a role-specific report
-                with clear next moves.
-              </p>
+                <p className="font-['Andika'] mt-4 max-w-sm text-xs leading-relaxed text-[#aaa398]">
+                  Drop your file directly into this canvas to configure your personalized, intelligence-driven evaluation report.
+                </p>
 
-              <div className="mt-9 rounded-2xl border border-dashed border-white/20 bg-white/[0.025] p-8 text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-[#d9ff5a]/40 text-xl text-[#d9ff5a]">
-                  ↓
+                {/* Tactile Inner Drop Box */}
+                <div className="mt-8 w-full rounded-2xl border border-dashed border-white/[0.12] bg-white/[0.015] p-8 transition hover:border-white/20">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[#d9ff5a]/20 bg-[#171613] text-lg text-[#d9ff5a]">
+                    ↓
+                  </div>
+
+                  <p className="font-['Andika'] mt-4 text-sm font-medium text-[#f2eee6]">
+                    Drag & drop your resume
+                  </p>
+
+                  <p className="font-['Andika'] mt-1 text-xs text-[#777168]">
+                    PDF format · up to 5 MB
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => inputRef.current?.click()}
+                    className="font-['Familjen_Grotesk'] outline-button mt-5 rounded-xl px-5 py-2 text-xs font-bold uppercase tracking-wider"
+                  >
+                    Select File
+                  </button>
+
+                  <input
+                    ref={inputRef}
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={(event) => selectFile(event.target.files?.[0])}
+                  />
                 </div>
 
-                <p className="mt-4 text-base text-[#f2eee6]">
-                  Drop your resume here
-                </p>
-
-                <p className="mt-1 text-xs text-[#777168]">
-                  PDF only · Maximum 5 MB
-                </p>
-
-                <button
-                  type="button"
-                  onClick={() => inputRef.current?.click()}
-                  className="outline-button mt-5 rounded-xl px-5 py-2.5 text-sm"
-                >
-                  Choose PDF
-                </button>
-
-                <input
-                  ref={inputRef}
-                  type="file"
-                  accept="application/pdf"
-                  className="hidden"
-                  onChange={(event) => selectFile(event.target.files?.[0])}
-                />
+                {error && (
+                  <p className="font-['Andika'] mt-4 text-xs text-[#ff8e7f]">{error}</p>
+                )}
               </div>
-
-              {error && (
-                <p className="mt-4 text-sm text-[#ff8e7f]">{error}</p>
-              )}
             </div>
           </motion.div>
         )}
@@ -363,20 +368,22 @@ formatting concerns, grammar, and practical improvements.`;
         {stage === 'target' && (
           <motion.div
             key="target"
-            initial={{ opacity: 0, x: 180, scale: 0.92 }}
+            initial={{ opacity: 0, x: 140, scale: 0.97 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
             className="mx-auto max-w-xl"
           >
-            <div className="dossier-card rounded-[30px] p-7 sm:p-10">
-              <div className="flex items-start justify-between gap-4">
+            <div className="dossier-card rounded-[32px] border border-white/[0.06] bg-white/[0.01] p-8 sm:p-10">
+              
+              {/* Header section */}
+              <div className="flex items-start justify-between gap-4 border-b border-white/[0.06] pb-6">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-[#d9ff5a]">
-                    Target dossier / 02
+                  <p className="font-['Familjen_Grotesk'] text-[10px] font-bold uppercase tracking-[0.24em] text-[#d9ff5a]">
+                    Target framework / 02
                   </p>
 
-                  <h2 className="editorial -title mt-3 text-4xl leading-[0.95] sm:text-5xl">
+                  <h2 className="font-['Familjen_Grotesk'] mt-3 text-3xl font-bold leading-[1.1] tracking-tight text-white sm:text-4xl">
                     Where should
                     <br />
                     this resume go?
@@ -386,103 +393,113 @@ formatting concerns, grammar, and practical improvements.`;
                 <button
                   type="button"
                   onClick={resetFile}
-                  className="text-xs uppercase tracking-wider text-[#aaa398] hover:text-[#f2eee6]"
+                  className="font-['Familjen_Grotesk'] mt-1 text-[10px] font-bold uppercase tracking-wider text-[#aaa398] transition hover:text-[#d9ff5a]"
                 >
                   Change PDF
                 </button>
               </div>
 
-              <div className="mt-7 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-                <p className="text-sm text-[#f2eee6]">{file?.name}</p>
-                <p className="mt-1 text-xs text-[#777168]">
-                  {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB · PDF ready` : ''}
+              {/* Status File Indicator */}
+              <div className="mt-6 flex items-center justify-between rounded-xl bg-white/[0.02] px-4 py-3 border border-white/[0.04]">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <span className="text-[#d9ff5a] text-sm shrink-0">✓</span>
+                  <p className="font-['Andika'] truncate text-xs text-[#e4dfd6]">{file?.name}</p>
+                </div>
+                <p className="font-['Andika'] shrink-0 text-[11px] text-[#777168] ml-2">
+                  {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : ''}
                 </p>
               </div>
 
-              <div className="mt-7 flex gap-2">
+              {/* Segmented Controller Tab Bar */}
+              <div className="mt-8 grid grid-cols-2 rounded-xl bg-white/[0.03] p-1 border border-white/[0.05]">
                 <button
                   type="button"
                   onClick={() => setMode('role')}
-                  className={`rounded-full px-4 py-2 text-xs uppercase tracking-wider transition ${
+                  className={`font-['Familjen_Grotesk'] rounded-lg py-2.5 text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
                     mode === 'role'
-                      ? 'bg-[#d9ff5a] text-[#171613]'
-                      : 'border border-white/15 text-[#aaa398]'
+                      ? 'bg-[#d9ff5a] text-[#171613] shadow-sm'
+                      : 'text-[#aaa398] hover:text-[#f2eee6]'
                   }`}
                 >
-                  Target role
+                  Target Role
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setMode('jd')}
-                  className={`rounded-full px-4 py-2 text-xs uppercase tracking-wider transition ${
+                  className={`font-['Familjen_Grotesk'] rounded-lg py-2.5 text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
                     mode === 'jd'
-                      ? 'bg-[#d9ff5a] text-[#171613]'
-                      : 'border border-white/15 text-[#aaa398]'
+                      ? 'bg-[#d9ff5a] text-[#171613] shadow-sm'
+                      : 'text-[#aaa398] hover:text-[#f2eee6]'
                   }`}
                 >
-                  Full job description
+                  Job Description
                 </button>
               </div>
 
-              <AnimatePresence mode="wait">
-                {mode === 'role' ? (
-                  <motion.div
-                    key="role"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    className="mt-5"
-                  >
-                    <label className="mb-2 block text-xs uppercase tracking-[0.16em] text-[#aaa398]">
-                      Target role
-                    </label>
+              {/* Interactive Form Switcher */}
+              <div className="min-h-[140px]">
+                <AnimatePresence mode="wait">
+                  {mode === 'role' ? (
+                    <motion.div
+                      key="role"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.2 }}
+                      className="mt-6"
+                    >
+                      <label className="font-['Familjen_Grotesk'] mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-[#777168]">
+                        Designated Role Title
+                      </label>
 
-                    <input
-                      value={jobRole}
-                      onChange={(event) => setJobRole(event.target.value)}
-                      className="dossier-input px-4 py-3.5"
-                      placeholder="Frontend Developer, Java Developer, Data Analyst..."
-                    />
+                      <input
+                        value={jobRole}
+                        onChange={(event) => setJobRole(event.target.value)}
+                        className="font-['Andika'] dossier-input w-full rounded-xl bg-white/[0.02] border border-white/[0.08] px-4 py-3 text-sm text-white focus:border-[#d9ff5a]/30 focus:outline-none focus:ring-0 transition"
+                        placeholder="e.g. Frontend Engineer, ML Developer, Data Analyst..."
+                      />
 
-                    <p className="mt-3 text-xs leading-relaxed text-[#777168]">
-                      A job title gives a focused report. Add the full description
-                      if you want a more precise match.
-                    </p>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="jd"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    className="mt-5"
-                  >
-                    <label className="mb-2 block text-xs uppercase tracking-[0.16em] text-[#aaa398]">
-                      Job description
-                    </label>
+                      <p className="font-['Andika'] mt-3 text-xs leading-relaxed text-[#777168]">
+                        Gives a high-level targeted report. Switch to structural Job Description for specific phrase requirements.
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="jd"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.2 }}
+                      className="mt-6"
+                    >
+                      <label className="font-['Familjen_Grotesk'] mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-[#777168]">
+                        Full Role Specification Content
+                      </label>
 
-                    <textarea
-                      value={jobDescription}
-                      onChange={(event) => setJobDescription(event.target.value)}
-                      rows={7}
-                      className="dossier-input resize-none px-4 py-3.5"
-                      placeholder="Paste the role description here..."
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                      <textarea
+                        value={jobDescription}
+                        onChange={(event) => setJobDescription(event.target.value)}
+                        rows={5}
+                        className="font-['Andika'] dossier-input w-full resize-none rounded-xl bg-white/[0.02] border border-white/[0.08] px-4 py-3 text-sm text-white focus:border-[#d9ff5a]/30 focus:outline-none focus:ring-0 transition"
+                        placeholder="Paste requirement parameters and operational objectives here..."
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               {error && (
-                <p className="mt-4 text-sm text-[#ff8e7f]">{error}</p>
+                <p className="font-['Andika'] mt-4 text-xs text-[#ff8e7f]">{error}</p>
               )}
 
+              {/* Action Trigger Button */}
               <button
                 type="button"
                 onClick={analyzeResume}
-                className="accent-button mt-8 w-full rounded-xl px-5 py-3.5 text-sm font-semibold"
+                className="font-['Familjen_Grotesk'] accent-button mt-6 w-full rounded-xl py-3.5 text-xs font-bold uppercase tracking-[0.16em] shadow-[0_4px_20px_rgba(217,255,90,0.15)] hover:shadow-[0_4px_24px_rgba(217,255,90,0.25)] transition-all duration-300"
               >
-                Build my report →
+                Compile Report →
               </button>
             </div>
           </motion.div>
@@ -491,10 +508,10 @@ formatting concerns, grammar, and practical improvements.`;
         {stage === 'loading' && (
           <motion.div
             key="loading"
-            initial={{ opacity: 0, scale: 0.94 }}
+            initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.03 }}
-            transition={{ duration: 0.4 }}
+            exit={{ opacity: 0, scale: 1.02 }}
+            transition={{ duration: 0.35 }}
           >
             <DocumentScanner percent={percent} message={loadingMessage} />
           </motion.div>
